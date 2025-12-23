@@ -3,6 +3,7 @@ package de.tum.cit.aet.valleyday.audio;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.audio.Music;
 
+// Kommentar
 /**
  * This enum is used to manage the music tracks in the game.
  * Currently, only one track is used, but this could be extended to include multiple tracks.
