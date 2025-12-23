@@ -6,7 +6,7 @@ Diese Anleitung erklärt, wie Sie Ihr GitHub-Repository von "Private" auf "Publi
 ## Schritt-für-Schritt-Anleitung
 
 ### 1. Repository-Einstellungen öffnen
-1. Öffnen Sie Ihr Repository auf GitHub (https://github.com/jonasjuchelka/Projectwork)
+1. Öffnen Sie Ihr Repository auf GitHub (z.B. `https://github.com/[username]/[repository-name]`)
 2. Klicken Sie oben rechts auf den Tab **"Settings"** (Einstellungen)
    - **Hinweis:** Sie müssen Administrator-Rechte für das Repository haben, um diese Option zu sehen
 
@@ -19,7 +19,7 @@ Diese Anleitung erklärt, wie Sie Ihr GitHub-Repository von "Private" auf "Publi
 2. Klicken Sie auf den Button **"Change visibility"**
 3. Wählen Sie **"Make public"** aus
 4. GitHub wird Sie bitten, den Repository-Namen zur Bestätigung einzugeben
-5. Geben Sie `jonasjuchelka/Projectwork` ein (oder den vollständigen Namen Ihres Repositories)
+5. Geben Sie den vollständigen Namen Ihres Repositories ein (Format: `username/repository-name`)
 6. Klicken Sie auf **"I understand, make this repository public"**
 
 ## Wichtige Hinweise
