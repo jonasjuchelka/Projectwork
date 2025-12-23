@@ -4,7 +4,7 @@ java {
 sourceSets.main.java.srcDirs = [ "src/" ]
 sourceSets.main.resources.srcDirs = ["../assets"]
 
-project.ext.mainClassName = "de.tum.cit.ase.valleyday.DesktopLauncher"
+project.ext.mainClassName = "de.tum.cit.aet.valleyday.DesktopLauncher"
 project.ext.assetsDir = new File("../assets")
 
 import org.gradle.internal.os.OperatingSystem
@@ -31,6 +31,11 @@ tasks.register('debug', JavaExec) {
     workingDir = project.assetsDir
     ignoreExitValue = true
     debug = true
+
+    if (OperatingSystem.current() == OperatingSystem.MAC_OS) {
+        // Ensure GLFW runs on first thread on macOS
+        jvmArgs += "-XstartOnFirstThread"
+    }
 }
 
 tasks.register('dist', Jar) {
