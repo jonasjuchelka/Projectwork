@@ -1,85 +1,139 @@
 package de.tum.cit.aet.valleyday.map;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.World;
 import de.tum.cit.aet.valleyday.ValleyDayGame;
 
-import java.util.Arrays;
 import java.util.List;
 
 /**
  * Represents the game map.
- * Holds all the objects and entities in the game.
+ * Loads tile data from .properties files and manages all entities and physics.
  */
 public class GameMap {
-    
-    // A static block is executed once when the class is referenced for the first time.
+
     static {
-        // Initialize the Box2D physics engine.
         com.badlogic.gdx.physics.box2d.Box2D.init();
     }
-    
-    // Box2D physics simulation parameters (you can experiment with these if you want, but they work well as they are)
-    /**
-     * The time step for the physics simulation.
-     * This is the amount of time that the physics simulation advances by in each frame.
-     * It is set to 1/refreshRate, where refreshRate is the refresh rate of the monitor, e.g., 1/60 for 60 Hz.
-     */
-    private static final float TIME_STEP = 1f / Gdx.graphics.getDisplayMode().refreshRate;
-    /** The number of velocity iterations for the physics simulation. */
+
+    private static final float TIME_STEP = 1f / 60f;
     private static final int VELOCITY_ITERATIONS = 6;
-    /** The number of position iterations for the physics simulation. */
     private static final int POSITION_ITERATIONS = 2;
-    /**
-     * The accumulated time since the last physics step.
-     * We use this to keep the physics simulation at a constant rate even if the frame rate is variable.
-     */
+    private static final int MAP_WIDTH = 21;
+    private static final int MAP_HEIGHT = 21;
+
     private float physicsTime = 0;
-    
-    /** The game, in case the map needs to access it. */
+
     private final ValleyDayGame game;
-    /** The Box2D world for physics simulation. */
     private final World world;
-    
-    // Game objects
+
     private final Player player;
-    
     private final Chest chest;
-    
-    private final Flowers[][] flowers;
-    
+
+    // Tile grid: stores tile type ID at each position
+    private final int[][] tileGrid;
+
     public GameMap(ValleyDayGame game) {
         this.game = game;
         this.world = new World(Vector2.Zero, true);
-        // Create a player with initial position (1, 3)
+
+        // Initialize player and chest
         this.player = new Player(this.world, 1, 3);
-        // Create a chest in the middle of the map
-        this.chest = new Chest(world, 3, 3);
-        // Create flowers in a 7x7 grid
-        this.flowers = new Flowers[7][7];
-        for (int i = 0; i < flowers.length; i++) {
-            for (int j = 0; j < flowers[i].length; j++) {
-                this.flowers[i][j] = new Flowers(i, j);
+        this.chest = new Chest(this.world, 3, 3);
+
+        // Initialize empty tile grid
+        this.tileGrid = new int[MAP_WIDTH][MAP_HEIGHT];
+        for (int x = 0; x < MAP_WIDTH; x++) {
+            for (int y = 0; y < MAP_HEIGHT; y++) {
+                tileGrid[x][y] = -1;  // -1 = empty/grass
             }
         }
     }
-    
+
     /**
-     * Updates the game state. This is called once per frame.
-     * Every dynamic object in the game should update its state here.
-     * @param frameTime the time that has passed since the last update
+     * Load a map from a .properties file.
+     * Format: x,y=type
+     * Types: 0=wall, 1=destructible, 2=entrance, 3-6=special
      */
+    public void loadFromProperties(FileHandle file) {
+        if (file == null || !file.exists()) {
+            Gdx.app.log("MapLoad", "File not found: " + file);
+            return;
+        }
+
+        // Reset grid
+        for (int x = 0; x < MAP_WIDTH; x++) {
+            for (int y = 0; y < MAP_HEIGHT; y++) {
+                tileGrid[x][y] = -1;
+            }
+        }
+
+        // Parse file line by line
+        String content = file.readString();
+        String[] lines = content.split("\\r?\\n");
+
+        for (String line : lines) {
+            line = line.trim();
+
+            // Skip empty lines and comments
+            if (line.isEmpty() || line.startsWith("#")) {
+                continue;
+            }
+
+            // Parse format: x,y=type
+            String[] parts = line.split("=");
+            if (parts.length != 2) {
+                continue;
+            }
+
+            String[] coords = parts[0].split(",");
+            if (coords.length != 2) {
+                continue;
+            }
+
+            try {
+                int x = Integer.parseInt(coords[0].trim());
+                int y = Integer.parseInt(coords[1].trim());
+                int type = Integer.parseInt(parts[1].trim());
+
+                // Validate coordinates and store
+                if (x >= 0 && x < MAP_WIDTH && y >= 0 && y < MAP_HEIGHT) {
+                    tileGrid[x][y] = type;
+                }
+            } catch (NumberFormatException e) {
+                // Skip malformed lines
+            }
+        }
+
+        Gdx.app.log("MapLoad", "Successfully loaded map: " + file.name());
+    }
+
+    /**
+     * Get the tile type at a specific coordinate.
+     * Returns -1 for empty, 0 for wall, 1 for destructible, etc.
+     */
+    public int getTileType(int x, int y) {
+        if (x >= 0 && x < MAP_WIDTH && y >= 0 && y < MAP_HEIGHT) {
+            return tileGrid[x][y];
+        }
+        return -1;
+    }
+
+    /**
+     * Check if a tile is walkable (empty or special, not wall/destructible).
+     */
+    public boolean isWalkable(int x, int y) {
+        int type = getTileType(x, y);
+        return type == -1 || type >= 2;  // empty or special tiles are walkable
+    }
+
     public void tick(float frameTime) {
         this.player.tick(frameTime);
         doPhysicsStep(frameTime);
     }
-    
-    /**
-     * Performs as many physics steps as necessary to catch up to the given frame time.
-     * This will update the Box2D world by the given time step.
-     * @param frameTime Time since last frame in seconds
-     */
+
     private void doPhysicsStep(float frameTime) {
         this.physicsTime += frameTime;
         while (this.physicsTime >= TIME_STEP) {
@@ -87,19 +141,36 @@ public class GameMap {
             this.physicsTime -= TIME_STEP;
         }
     }
-    
-    /** Returns the player on the map. */
+
     public Player getPlayer() {
         return player;
     }
-    
-    /** Returns the chest on the map. */
+
     public Chest getChest() {
         return chest;
     }
-    
-    /** Returns the flowers on the map. */
-    public List<Flowers> getFlowers() {
-        return Arrays.stream(flowers).flatMap(Arrays::stream).toList();
+
+    public int getWidth() {
+        return MAP_WIDTH;
+    }
+
+    public int getHeight() {
+        return MAP_HEIGHT;
+    }
+
+    /**
+     * Get all tile positions with their types for rendering.
+     */
+    public int[][] getTileGrid() {
+        return tileGrid;
+    }
+
+    /**
+     * Legacy method for compatibility.
+     */
+    @Deprecated
+    public Tile getTile(int x, int y) {
+        // You can implement this later if you create concrete Tile subclasses
+        return null;
     }
 }

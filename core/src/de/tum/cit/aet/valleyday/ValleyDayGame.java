@@ -10,6 +10,10 @@ import de.tum.cit.aet.valleyday.map.GameMap;
 import de.tum.cit.aet.valleyday.screen.GameScreen;
 import de.tum.cit.aet.valleyday.screen.MenuScreen;
 import games.spooky.gdx.nativefilechooser.NativeFileChooser;
+import com.badlogic.gdx.files.FileHandle;
+import games.spooky.gdx.nativefilechooser.NativeFileChooserCallback;
+import games.spooky.gdx.nativefilechooser.NativeFileChooserConfiguration;
+
 
 /**
  * The ValleyDayGame class represents the core of the Valley Day game.
@@ -64,6 +68,11 @@ public class ValleyDayGame extends Game {
         goToMenu(); // Navigate to the menu screen
     }
 
+    public void resetMap() {
+        this.map = new GameMap(this);  // new default map
+    }
+
+
     /**
      * Switches to the menu screen.
      */
@@ -77,6 +86,31 @@ public class ValleyDayGame extends Game {
     public void goToGame() {
         this.setScreen(new GameScreen(this)); // Set the current screen to GameScreen
     }
+
+    /**
+     * Opens file chooser to load a map file.
+     */
+    public void loadMapFromFileChooser() {
+        fileChooser.chooseFile(null, new NativeFileChooserCallback() {
+            @Override
+            public void onFileChosen(FileHandle file) {
+                Gdx.app.log("MapLoad", "Selected: " + file.path());
+                map.loadFromProperties(file);
+                goToGame();
+            }
+            @Override
+            public void onCancellation() {
+                Gdx.app.log("MapLoad", "Cancelled");
+            }
+            @Override
+            public void onError(Exception e) {
+                Gdx.app.error("MapLoad", "Error: " + e.getMessage());
+            }
+        });
+    }
+
+
+
 
     /** Returns the skin for UI elements. */
     public Skin getSkin() {
