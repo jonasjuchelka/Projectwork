@@ -7,7 +7,8 @@ sourceSets.main.resources.srcDirs = ["../assets"]
 project.ext.mainClassName = "de.tum.cit.aet.valleyday.DesktopLauncher"
 project.ext.assetsDir = new File("../assets")
 
-import org.gradle.internal.os.OperatingSystem
+// OS detection without using Gradle internal APIs
+def isMac = System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("mac")
 
 tasks.register('run', JavaExec) {
     dependsOn classes
@@ -17,7 +18,7 @@ tasks.register('run', JavaExec) {
     workingDir = project.assetsDir
     ignoreExitValue = true
 
-    if (OperatingSystem.current() == OperatingSystem.MAC_OS) {
+    if (isMac) {
         // Required to run on macOS
         jvmArgs += "-XstartOnFirstThread"
     }
@@ -31,6 +32,11 @@ tasks.register('debug', JavaExec) {
     workingDir = project.assetsDir
     ignoreExitValue = true
     debug = true
+
+    if (isMac) {
+        // Ensure GLFW runs on first thread on macOS
+        jvmArgs += "-XstartOnFirstThread"
+    }
 }
 
 tasks.register('dist', Jar) {

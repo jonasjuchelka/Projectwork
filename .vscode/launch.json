@@ -6,8 +6,9 @@
         "type": "java",
         "request": "launch",
         "mainClass": "de.tum.cit.aet.valleyday.DesktopLauncher",
-        // uncomment the following line to run on macOS
-        "vmArgs": "-XstartOnFirstThread"
+        // macOS: uncomment next line to enable -XstartOnFirstThread
+        // Windows/Linux: leave commented, otherwise the game will not start
+        // "vmArgs": "-XstartOnFirstThread"
       }
     ]
 }
