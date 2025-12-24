@@ -1,5 +1,7 @@
 package de.tum.cit.aet.valleyday.map;
 
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.physics.box2d.BodyDef;
@@ -62,13 +64,33 @@ public class Player implements Drawable {
      * @param frameTime the time since the last frame.
      */
     public void tick(float frameTime) {
-        this.elapsedTime += frameTime;
-        // Make the player move in a circle with radius 2 tiles
-        // You can change this to make the player move differently, e.g. in response to user input.
-        // See Gdx.input.isKeyPressed() for keyboard input
-        float xVelocity = (float) Math.sin(this.elapsedTime) * 2;
-        float yVelocity = (float) Math.cos(this.elapsedTime) * 2;
-        this.hitbox.setLinearVelocity(xVelocity, yVelocity);
+        float vx = 0f;
+        float vy = 0f;
+
+        if (Gdx.input.isKeyPressed(Input.Keys.W) || Gdx.input.isKeyPressed(Input.Keys.UP)) {
+            vy += 1f;
+        }
+        if (Gdx.input.isKeyPressed(Input.Keys.S) || Gdx.input.isKeyPressed(Input.Keys.DOWN)) {
+            vy -= 1f;
+        }
+        if (Gdx.input.isKeyPressed(Input.Keys.A) || Gdx.input.isKeyPressed(Input.Keys.LEFT)) {
+            vx -= 1f;
+        }
+        if (Gdx.input.isKeyPressed(Input.Keys.D) || Gdx.input.isKeyPressed(Input.Keys.RIGHT)) {
+            vx += 1f;
+        }
+
+        float speed = 3.0f;
+
+        if (vx != 0f || vy != 0f) {
+            // Normalize diagonal movement
+            float len = (float) Math.sqrt(vx * vx + vy * vy);
+            vx = (vx / len) * speed;
+            vy = (vy / len) * speed;
+            this.elapsedTime += frameTime;
+        }
+
+        this.hitbox.setLinearVelocity(vx, vy);
     }
     
     @Override

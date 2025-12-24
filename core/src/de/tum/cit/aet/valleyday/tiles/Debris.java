@@ -1,4 +1,4 @@
-package de.tum.cit.aet.valleyday.map;
+package de.tum.cit.aet.valleyday.tiles;
 
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import de.tum.cit.aet.valleyday.texture.SpriteSheet;

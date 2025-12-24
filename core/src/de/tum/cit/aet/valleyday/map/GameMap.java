@@ -5,7 +5,9 @@ import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.World;
 import de.tum.cit.aet.valleyday.ValleyDayGame;
+import de.tum.cit.aet.valleyday.tiles.Tile;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -57,17 +59,26 @@ public class GameMap {
      * Format: x,y=type
      * Types: 0=wall, 1=destructible, 2=entrance, 3-6=special
      */
-    public void loadFromProperties(FileHandle file) {
+    public boolean loadFromProperties(FileHandle file) {
         int[][] loadedGrid = MapLoader.load(file, MAP_WIDTH, MAP_HEIGHT);
         if (loadedGrid == null) {
-            return;
+            Gdx.app.error("MapLoad", "Failed to load map from file: " + file);
+            return false;
         }
 
+        // reset to empty
         for (int x = 0; x < MAP_WIDTH; x++) {
-            System.arraycopy(loadedGrid[x], 0, tileGrid[x], 0, MAP_HEIGHT);
+            Arrays.fill(tileGrid[x], -1);
+        }
+
+        int copyWidth = Math.min(MAP_WIDTH, loadedGrid.length);
+        for (int x = 0; x < copyWidth; x++) {
+            int copyHeight = Math.min(MAP_HEIGHT, loadedGrid[x].length);
+            System.arraycopy(loadedGrid[x], 0, tileGrid[x], 0, copyHeight);
         }
 
         Gdx.app.log("MapLoad", "Successfully loaded map: " + file.name());
+        return true;
     }
 
     /**

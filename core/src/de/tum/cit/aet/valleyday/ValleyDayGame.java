@@ -36,6 +36,7 @@ public class ValleyDayGame extends Game {
      * which you can use to read the contents of the map file as a String, and then parse it into a {@link GameMap}.
      */
     private final NativeFileChooser fileChooser;
+    private String statusMessage = "";
     
     /**
      * The map. This is where all the game objects are stored.
@@ -100,8 +101,14 @@ public class ValleyDayGame extends Game {
             @Override
             public void onFileChosen(FileHandle file) {
                 Gdx.app.log("MapLoad", "Selected: " + file.path());
-                map.loadFromProperties(file);
-                goToGame();
+                boolean ok = map.loadFromProperties(file);
+                if (ok) {
+                    setStatusMessage("");
+                    goToGame();
+                } else {
+                    setStatusMessage("Failed to load map: " + file.name());
+                    goToMenu();
+                }
             }
             @Override
             public void onCancellation() {
@@ -130,6 +137,14 @@ public class ValleyDayGame extends Game {
     /** Returns the current map, if there is one. */
     public GameMap getMap() {
         return map;
+    }
+
+    public void setStatusMessage(String statusMessage) {
+        this.statusMessage = statusMessage;
+    }
+
+    public String getStatusMessage() {
+        return statusMessage;
     }
     
     /**

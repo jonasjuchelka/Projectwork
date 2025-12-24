@@ -39,6 +39,9 @@ public class MenuScreen implements Screen {
                 .padBottom(80)
                 .row();
 
+        Label statusLabel = new Label(game.getStatusMessage(), game.getSkin());
+        statusLabel.setColor(Color.RED);
+
         // Go To Game button (loads map-1.properties)
         TextButton goToGameButton = new TextButton("Go To Game", game.getSkin());
         table.add(goToGameButton).width(300).row();
@@ -46,8 +49,14 @@ public class MenuScreen implements Screen {
         goToGameButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                game.getMap().loadFromProperties(Gdx.files.internal("maps/map-1.properties"));
-                game.goToGame();
+                boolean ok = game.getMap().loadFromProperties(Gdx.files.internal("maps/map-1.properties"));
+                if (ok) {
+                    game.setStatusMessage("");
+                    game.goToGame();
+                } else {
+                    game.setStatusMessage("Failed to load map-1.properties");
+                    statusLabel.setText(game.getStatusMessage());
+                }
             }
         });
 
@@ -59,6 +68,7 @@ public class MenuScreen implements Screen {
             @Override
             public void clicked(InputEvent event, float x, float y) {
                 game.loadMapFromFileChooser();
+                statusLabel.setText(game.getStatusMessage());
             }
         });
 
@@ -69,8 +79,14 @@ public class MenuScreen implements Screen {
         loadMapButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                game.getMap().loadFromProperties(Gdx.files.internal("maps/map-2.properties"));
-                game.goToGame();
+                boolean ok = game.getMap().loadFromProperties(Gdx.files.internal("maps/map-2.properties"));
+                if (ok) {
+                    game.setStatusMessage("");
+                    game.goToGame();
+                } else {
+                    game.setStatusMessage("Failed to load map-2.properties");
+                    statusLabel.setText(game.getStatusMessage());
+                }
             }
         });
 
@@ -84,6 +100,9 @@ public class MenuScreen implements Screen {
                 Gdx.app.exit();
             }
         });
+
+        table.row().padTop(20f);
+        table.add(statusLabel).width(300).row();
     }
 
     @Override

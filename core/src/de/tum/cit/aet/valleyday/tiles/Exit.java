@@ -1,19 +1,19 @@
-package de.tum.cit.aet.valleyday.map;
+package de.tum.cit.aet.valleyday.tiles;
 
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import de.tum.cit.aet.valleyday.texture.SpriteSheet;
 
 /**
- * Entrance tile where the player spawns.
+ * Exit (farm gate) tile.
  */
-public class Entrance extends Tile {
+public class Exit extends Tile {
 
     private final TextureRegion appearance;
 
-    public Entrance(float x, float y) {
+    public Exit(float x, float y) {
         super(x, y);
-        // Entrance: row 7, col 1
-        this.appearance = SpriteSheet.BASIC_TILES.at(7, 1);
+        // Exit: row 7, col 3
+        this.appearance = SpriteSheet.BASIC_TILES.at(7, 3);
     }
 
     @Override

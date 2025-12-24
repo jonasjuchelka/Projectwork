@@ -5,6 +5,7 @@ import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.utils.ScreenUtils;
@@ -26,6 +27,8 @@ public class GameScreen implements Screen {
     private final GameMap map;
     private final Hud hud;
     private final OrthographicCamera mapCamera;
+    private ShapeRenderer tileDebugRenderer;
+    private boolean showTileDebug = false;
 
     public GameScreen(ValleyDayGame game) {
         this.game = game;
@@ -43,12 +46,20 @@ public class GameScreen implements Screen {
             game.goToMenu();
         }
 
+        // Toggle tile debug overlay
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F3)) {
+            showTileDebug = !showTileDebug;
+        }
+
         ScreenUtils.clear(Color.BLACK);
 
         float frameTime = Math.min(deltaTime, 0.250f);
         map.tick(frameTime);
         updateCamera();
         renderMap();
+        if (showTileDebug) {
+            renderTileDebugOverlay();
+        }
         hud.render();
     }
 
@@ -85,6 +96,42 @@ public class GameScreen implements Screen {
         }
 
         spriteBatch.end();
+    }
+
+    private void renderTileDebugOverlay() {
+        if (tileDebugRenderer == null) {
+            tileDebugRenderer = new ShapeRenderer();
+        }
+        tileDebugRenderer.setProjectionMatrix(mapCamera.combined);
+        tileDebugRenderer.begin(ShapeRenderer.ShapeType.Filled);
+
+        int[][] tileGrid = map.getTileGrid();
+        for (int x = 0; x < map.getWidth(); x++) {
+            for (int y = 0; y < map.getHeight(); y++) {
+                int type = tileGrid[x][y];
+                if (type < 0) continue;
+
+                tileDebugRenderer.setColor(colorForType(type));
+                float px = x * TILE_SIZE_PX * SCALE;
+                float py = y * TILE_SIZE_PX * SCALE;
+                tileDebugRenderer.rect(px, py, TILE_SIZE_PX * SCALE, TILE_SIZE_PX * SCALE);
+            }
+        }
+
+        tileDebugRenderer.end();
+    }
+
+    private Color colorForType(int type) {
+        return switch (type) {
+            case 0 -> new Color(1f, 0f, 0f, 0.25f);      // wall
+            case 1 -> new Color(1f, 0.5f, 0f, 0.25f);    // destructible
+            case 2 -> new Color(0f, 0.8f, 0f, 0.25f);    // entrance
+            case 3 -> new Color(0f, 0.6f, 1f, 0.25f);
+            case 4 -> new Color(0.6f, 0f, 1f, 0.25f);
+            case 5 -> new Color(1f, 1f, 0f, 0.25f);
+            case 6 -> new Color(1f, 0f, 1f, 0.25f);
+            default -> new Color(1f, 1f, 1f, 0.25f);
+        };
     }
 
     private void drawTile(SpriteBatch batch, int x, int y, int type) {
@@ -130,5 +177,9 @@ public class GameScreen implements Screen {
     public void hide() {}
 
     @Override
-    public void dispose() {}
+    public void dispose() {
+        if (tileDebugRenderer != null) {
+            tileDebugRenderer.dispose();
+        }
+    }
 }
