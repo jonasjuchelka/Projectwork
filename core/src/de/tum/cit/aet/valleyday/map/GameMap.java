@@ -58,53 +58,13 @@ public class GameMap {
      * Types: 0=wall, 1=destructible, 2=entrance, 3-6=special
      */
     public void loadFromProperties(FileHandle file) {
-        if (file == null || !file.exists()) {
-            Gdx.app.log("MapLoad", "File not found: " + file);
+        int[][] loadedGrid = MapLoader.load(file, MAP_WIDTH, MAP_HEIGHT);
+        if (loadedGrid == null) {
             return;
         }
 
-        // Reset grid
         for (int x = 0; x < MAP_WIDTH; x++) {
-            for (int y = 0; y < MAP_HEIGHT; y++) {
-                tileGrid[x][y] = -1;
-            }
-        }
-
-        // Parse file line by line
-        String content = file.readString();
-        String[] lines = content.split("\\r?\\n");
-
-        for (String line : lines) {
-            line = line.trim();
-
-            // Skip empty lines and comments
-            if (line.isEmpty() || line.startsWith("#")) {
-                continue;
-            }
-
-            // Parse format: x,y=type
-            String[] parts = line.split("=");
-            if (parts.length != 2) {
-                continue;
-            }
-
-            String[] coords = parts[0].split(",");
-            if (coords.length != 2) {
-                continue;
-            }
-
-            try {
-                int x = Integer.parseInt(coords[0].trim());
-                int y = Integer.parseInt(coords[1].trim());
-                int type = Integer.parseInt(parts[1].trim());
-
-                // Validate coordinates and store
-                if (x >= 0 && x < MAP_WIDTH && y >= 0 && y < MAP_HEIGHT) {
-                    tileGrid[x][y] = type;
-                }
-            } catch (NumberFormatException e) {
-                // Skip malformed lines
-            }
+            System.arraycopy(loadedGrid[x], 0, tileGrid[x], 0, MAP_HEIGHT);
         }
 
         Gdx.app.log("MapLoad", "Successfully loaded map: " + file.name());

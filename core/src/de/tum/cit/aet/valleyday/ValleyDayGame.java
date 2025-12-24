@@ -91,7 +91,12 @@ public class ValleyDayGame extends Game {
      * Opens file chooser to load a map file.
      */
     public void loadMapFromFileChooser() {
-        fileChooser.chooseFile(null, new NativeFileChooserCallback() {
+        NativeFileChooserConfiguration config = new NativeFileChooserConfiguration();
+        config.title = "Select map (.properties)";
+        // Filter to .properties files only
+        config.nameFilter = (dir, name) -> name != null && name.toLowerCase().endsWith(".properties");
+
+        fileChooser.chooseFile(config, new NativeFileChooserCallback() {
             @Override
             public void onFileChosen(FileHandle file) {
                 Gdx.app.log("MapLoad", "Selected: " + file.path());

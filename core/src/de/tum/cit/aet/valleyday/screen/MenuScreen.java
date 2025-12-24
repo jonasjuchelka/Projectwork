@@ -51,6 +51,17 @@ public class MenuScreen implements Screen {
             }
         });
 
+        // Load custom map via file chooser
+        TextButton loadCustomMapButton = new TextButton("Load Custom Map", game.getSkin());
+        table.add(loadCustomMapButton).width(300).row();
+
+        loadCustomMapButton.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                game.loadMapFromFileChooser();
+            }
+        });
+
         // Load Map button (loads map-2.properties)
         TextButton loadMapButton = new TextButton("Load Map", game.getSkin());
         table.add(loadMapButton).width(300).row();
