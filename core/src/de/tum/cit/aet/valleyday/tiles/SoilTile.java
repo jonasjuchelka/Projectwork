@@ -1,19 +1,19 @@
-package de.tum.cit.aet.valleyday.map;
+package de.tum.cit.aet.valleyday.tiles;
 
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import de.tum.cit.aet.valleyday.texture.SpriteSheet;
 
 /**
- * Entrance tile where the player spawns.
+ * Walkable soil tile, may contain a crop.
  */
-public class Entrance extends Tile {
+public class SoilTile extends Tile {
 
     private final TextureRegion appearance;
 
-    public Entrance(float x, float y) {
+    public SoilTile(float x, float y) {
         super(x, y);
-        // Entrance: row 7, col 1
-        this.appearance = SpriteSheet.BASIC_TILES.at(7, 1);
+        // Soil: row 8, col 7
+        this.appearance = SpriteSheet.BASIC_TILES.at(8, 7);
     }
 
     @Override
