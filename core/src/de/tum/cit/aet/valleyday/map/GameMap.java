@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import de.tum.cit.aet.valleyday.texture.Textures;
+import de.tum.cit.aet.valleyday.tiles.Tile;
 
 
 public class GameMap {
