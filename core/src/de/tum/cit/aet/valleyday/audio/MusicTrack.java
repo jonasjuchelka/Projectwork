@@ -18,6 +18,8 @@ public enum MusicTrack {
     
     /** The music file owned by this variant. */
     private final Music music;
+    /** Whether the track is currently muted. */
+    private boolean muted = false;
     
     MusicTrack(String fileName, float volume) {
         this.music = Gdx.audio.newMusic(Gdx.files.internal("audio/" + fileName));
@@ -26,10 +28,43 @@ public enum MusicTrack {
     }
     
     /**
-     * Play this music track.
+     * Play this music track if it is not muted.
      * This will not stop other music from playing - if you add more tracks, you will have to handle that yourself.
      */
     public void play() {
-        this.music.play();
+        if (!muted) {
+            this.music.play();
+        }
+    }
+
+    /** Pause playback regardless of mute state. */
+    public void pause() {
+        this.music.pause();
+    }
+
+    /** Resume playback if not muted. */
+    public void resume() {
+        if (!muted && !music.isPlaying()) {
+            this.music.play();
+        }
+    }
+
+    /** Toggle mute and immediately apply the new state. */
+    public void toggleMute() {
+        setMuted(!muted);
+    }
+
+    /** Set the mute state; pauses when muted, resumes when unmuted. */
+    public void setMuted(boolean muted) {
+        this.muted = muted;
+        if (muted) {
+            music.pause();
+        } else {
+            music.play();
+        }
+    }
+
+    public boolean isMuted() {
+        return muted;
     }
 }

@@ -7,7 +7,6 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.files.FileHandle;
 
-import de.tum.cit.aet.valleyday.audio.MusicTrack;
 import de.tum.cit.aet.valleyday.map.GameMap;
 import de.tum.cit.aet.valleyday.screen.GameScreen;
 import de.tum.cit.aet.valleyday.screen.MenuScreen;
@@ -56,14 +55,10 @@ public class ValleyDayGame extends Game {
      */
     @Override
     public void create() {
-        this.spriteBatch = new SpriteBatch();
-        this.skin = new Skin(Gdx.files.internal("skin/craftacular/craftacular-ui.json"));
-
-        // Create an empty map; MenuScreen will call map.loadFromProperties(...)
-        this.map = new GameMap(this);
-
-        MusicTrack.BACKGROUND.play();
-        goToMenu();
+        this.spriteBatch = new SpriteBatch(); // Create SpriteBatch for rendering
+        this.skin = new Skin(Gdx.files.internal("skin/craftacular/craftacular-ui.json")); // Load UI skin
+        this.map = new GameMap(this); // Create a new game map (you should change this to load the map from a file instead)
+        goToMenu(); // Navigate to the menu screen
     }
 
     /**

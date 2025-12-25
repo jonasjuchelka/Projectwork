@@ -5,10 +5,18 @@ import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.scenes.scene2d.Actor;
+import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.ui.Table;
+import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
+import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
+import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.utils.ScreenUtils;
 import de.tum.cit.aet.valleyday.ValleyDayGame;
+import de.tum.cit.aet.valleyday.audio.MusicTrack;
 import de.tum.cit.aet.valleyday.map.GameMap;
 import de.tum.cit.aet.valleyday.texture.Drawable;
 import de.tum.cit.aet.valleyday.texture.Textures;
@@ -35,6 +43,10 @@ public class GameScreen implements Screen {
     private final GameMap map;
     private final Hud hud;
     private final OrthographicCamera mapCamera;
+    private final Stage uiStage;
+    private final TextButton musicToggleButton;
+    private ShapeRenderer tileDebugRenderer;
+    private boolean showTileDebug = false;
 
     /**
      * Constructor for GameScreen. Sets up the camera and font.
@@ -47,9 +59,26 @@ public class GameScreen implements Screen {
         this.map = game.getMap();
         this.hud = new Hud(spriteBatch, game.getSkin().getFont("font"));
 
-        // Create and configure the camera for the game view
         this.mapCamera = new OrthographicCamera();
         this.mapCamera.setToOrtho(false);
+
+        this.uiStage = new Stage(new ScreenViewport());
+        Table uiTable = new Table();
+        uiTable.setFillParent(true);
+        uiTable.top().right().pad(10f);
+
+        this.musicToggleButton = new TextButton("", game.getSkin());
+        updateMusicButtonLabel();
+        musicToggleButton.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                MusicTrack.BACKGROUND.toggleMute();
+                updateMusicButtonLabel();
+            }
+        });
+
+        uiTable.add(musicToggleButton).width(160f).height(45f);
+        uiStage.addActor(uiTable);
     }
 
     /**
@@ -59,28 +88,26 @@ public class GameScreen implements Screen {
      */
     @Override
     public void render(float deltaTime) {
-        // Check for escape key press to go back to the menu
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
             game.goToMenu();
         }
 
-        // Clear the previous frame from the screen, or else the picture smears
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F3)) {
+            showTileDebug = !showTileDebug;
+        }
+
         ScreenUtils.clear(Color.BLACK);
 
-        // Cap frame time to 250ms to prevent spiral of death
         float frameTime = Math.min(deltaTime, 0.250f);
-
-        // Update the map state
         map.tick(frameTime);
-
-        // Update the camera
         updateCamera();
-
-        // Render the map on the screen
         renderMap();
-
-        // Render the HUD on the screen
+        if (showTileDebug) {
+            renderTileDebugOverlay();
+        }
         hud.render();
+        uiStage.act(frameTime);
+        uiStage.draw();
     }
 
     /**
@@ -102,9 +129,6 @@ public class GameScreen implements Screen {
         spriteBatch.setProjectionMatrix(mapCamera.combined);
         spriteBatch.begin();
 
-        // DEBUG: how many objects does the screen see?
-        Gdx.app.log("Objects", "Objects in map when rendering: " + map.getGameObjects().size());
-
         // Draw all tiles from the grid
         int[][] tileGrid = map.getTileGrid();
         for (int x = 0; x < map.getWidth(); x++) {
@@ -123,7 +147,6 @@ public class GameScreen implements Screen {
             draw(spriteBatch, map.getChest());
         }
 
-        // Draw game objects (decorations, debris, flowers, etc.)
         for (Drawable obj : map.getGameObjects()) {
             draw(spriteBatch, obj);
         }
@@ -136,6 +159,46 @@ public class GameScreen implements Screen {
         spriteBatch.end();
     }
 
+    private void renderTileDebugOverlay() {
+        if (tileDebugRenderer == null) {
+            tileDebugRenderer = new ShapeRenderer();
+        }
+        tileDebugRenderer.setProjectionMatrix(mapCamera.combined);
+        tileDebugRenderer.begin(ShapeRenderer.ShapeType.Filled);
+
+        int[][] tileGrid = map.getTileGrid();
+        for (int x = 0; x < map.getWidth(); x++) {
+            for (int y = 0; y < map.getHeight(); y++) {
+                int type = tileGrid[x][y];
+                if (type < 0) continue;
+
+                tileDebugRenderer.setColor(colorForType(type));
+                float px = x * TILE_SIZE_PX * SCALE;
+                float py = y * TILE_SIZE_PX * SCALE;
+                tileDebugRenderer.rect(px, py, TILE_SIZE_PX * SCALE, TILE_SIZE_PX * SCALE);
+            }
+        }
+
+        tileDebugRenderer.end();
+    }
+
+    private Color colorForType(int type) {
+        return switch (type) {
+            case 0 -> new Color(1f, 0f, 0f, 0.25f);      // wall
+            case 1 -> new Color(1f, 0.5f, 0f, 0.25f);    // destructible
+            case 2 -> new Color(0f, 0.8f, 0f, 0.25f);    // entrance
+            case 3 -> new Color(0f, 0.6f, 1f, 0.25f);
+            case 4 -> new Color(0.6f, 0f, 1f, 0.25f);
+            case 5 -> new Color(1f, 1f, 0f, 0.25f);
+            case 6 -> new Color(1f, 0f, 1f, 0.25f);
+            default -> new Color(1f, 1f, 1f, 0.25f);
+        };
+    }
+
+    private void updateMusicButtonLabel() {
+        musicToggleButton.setText(MusicTrack.BACKGROUND.isMuted() ? "Music: Off" : "Music: On");
+    }
+
     /**
      * Draw a single tile at grid position (x, y) with the given type.
      * @param batch The SpriteBatch to draw with
@@ -144,13 +207,10 @@ public class GameScreen implements Screen {
      * @param tileType The tile type (0=wall, 1=destructible, etc.)
      */
     private void drawTile(SpriteBatch batch, int x, int y, int tileType) {
-        // Get the texture for this tile type
         TextureRegion texture = Textures.getTileTexture(tileType);
         if (texture == null) {
-            return;  // Skip if no texture available
+            return;
         }
-
-        // Convert tile coordinates to pixel coordinates
         float px = x * TILE_SIZE_PX * SCALE;
         float py = y * TILE_SIZE_PX * SCALE;
 
@@ -171,12 +231,10 @@ public class GameScreen implements Screen {
      */
     private static void draw(SpriteBatch spriteBatch, Drawable drawable) {
         TextureRegion texture = drawable.getCurrentAppearance();
+        if (texture == null) return;
 
-        // Drawable coordinates are in tiles, so we need to scale them to pixels
         float x = drawable.getX() * TILE_SIZE_PX * SCALE;
         float y = drawable.getY() * TILE_SIZE_PX * SCALE;
-
-        // Additionally scale everything by the game scale
         float width = texture.getRegionWidth() * SCALE;
         float height = texture.getRegionHeight() * SCALE;
 
@@ -193,6 +251,7 @@ public class GameScreen implements Screen {
     public void resize(int width, int height) {
         mapCamera.setToOrtho(false);
         hud.resize(width, height);
+        uiStage.getViewport().update(width, height, true);
     }
 
     // Unused methods from the Screen interface
@@ -203,11 +262,21 @@ public class GameScreen implements Screen {
     public void resume() {}
 
     @Override
-    public void show() {}
+    public void show() {
+        MusicTrack.BACKGROUND.resume();
+        Gdx.input.setInputProcessor(uiStage);
+    }
 
     @Override
-    public void hide() {}
+    public void hide() {
+        Gdx.input.setInputProcessor(null);
+    }
 
     @Override
-    public void dispose() {}
+    public void dispose() {
+        if (tileDebugRenderer != null) {
+            tileDebugRenderer.dispose();
+        }
+        uiStage.dispose();
+    }
 }

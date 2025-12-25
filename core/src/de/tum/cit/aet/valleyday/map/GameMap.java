@@ -208,6 +208,7 @@ public class GameMap {
     public void tick(float frameTime) {
         this.player.tick(frameTime);
         doPhysicsStep(frameTime);
+        handleBlackTileCollision();
     }
 
     private void doPhysicsStep(float frameTime) {
@@ -215,6 +216,18 @@ public class GameMap {
         while (this.physicsTime >= TIME_STEP) {
             this.world.step(TIME_STEP, VELOCITY_ITERATIONS, POSITION_ITERATIONS);
             this.physicsTime -= TIME_STEP;
+        }
+    }
+
+    /** Restart the game if the player steps onto a black (type 0) fence tile. */
+    private void handleBlackTileCollision() {
+        int px = (int) Math.floor(player.getX());
+        int py = (int) Math.floor(player.getY());
+
+        if (getTileType(px, py) == 0) { // 0 = wall tile (black)
+            game.setStatusMessage("Ouch! You ran into the fence. Back to the farm!");
+            game.resetMap();
+            game.goToMenu();
         }
     }
 

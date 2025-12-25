@@ -16,15 +16,18 @@ import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import de.tum.cit.aet.valleyday.ValleyDayGame;
+import de.tum.cit.aet.valleyday.audio.MusicTrack;
 
 /**
  * The MenuScreen class is responsible for displaying the main menu of the game.
  */
 public class MenuScreen implements Screen {
 
+    private final ValleyDayGame game;
     private final Stage stage;
 
     public MenuScreen(ValleyDayGame game) {
+        this.game = game;
         var camera = new OrthographicCamera();
         camera.zoom = 1.5f;
         Viewport viewport = new ScreenViewport(camera);
@@ -95,6 +98,7 @@ public class MenuScreen implements Screen {
 
     @Override
     public void show() {
+        MusicTrack.BACKGROUND.pause();
         Gdx.input.setInputProcessor(stage);
     }
 
