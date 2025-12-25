@@ -15,6 +15,7 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.utils.ScreenUtils;
+import com.badlogic.gdx.math.MathUtils;
 import de.tum.cit.aet.valleyday.ValleyDayGame;
 import de.tum.cit.aet.valleyday.audio.MusicTrack;
 import de.tum.cit.aet.valleyday.map.GameMap;
@@ -112,12 +113,30 @@ public class GameScreen implements Screen {
 
     /**
      * Updates the camera to match the current state of the game.
-     * Currently, this just centers the camera at the map center.
      */
     private void updateCamera() {
-        mapCamera.setToOrtho(false);
-        mapCamera.position.x = map.getWidth() * TILE_SIZE_PX * SCALE / 2f;
-        mapCamera.position.y = map.getHeight() * TILE_SIZE_PX * SCALE / 2f;
+        // Keep viewport in sync with the window size so the clamp math below stays correct
+        mapCamera.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+
+        if (map.getPlayer() == null) {
+            mapCamera.position.x = map.getWidth() * TILE_SIZE_PX * SCALE / 2f;
+            mapCamera.position.y = map.getHeight() * TILE_SIZE_PX * SCALE / 2f;
+            mapCamera.update();
+            return;
+        }
+
+        float worldWidthPx = map.getWidth() * TILE_SIZE_PX * SCALE;
+        float worldHeightPx = map.getHeight() * TILE_SIZE_PX * SCALE;
+
+        float targetX = map.getPlayer().getX() * TILE_SIZE_PX * SCALE;
+        float targetY = map.getPlayer().getY() * TILE_SIZE_PX * SCALE;
+
+        float halfWidth = mapCamera.viewportWidth / 2f;
+        float halfHeight = mapCamera.viewportHeight / 2f;
+
+        // Clamp camera so it never shows outside the map
+        mapCamera.position.x = MathUtils.clamp(targetX, halfWidth, worldWidthPx - halfWidth);
+        mapCamera.position.y = MathUtils.clamp(targetY, halfHeight, worldHeightPx - halfHeight);
         mapCamera.update();
     }
 

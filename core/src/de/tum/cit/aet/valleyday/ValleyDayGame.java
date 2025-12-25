@@ -33,6 +33,9 @@ public class ValleyDayGame extends Game {
      */
     private final NativeFileChooser fileChooser;
 
+    /** Status message shown on menu (e.g., when a map load fails). */
+    private String statusMessage = "";
+
     /**
      * The map. This is where all the game objects are stored.
      * Owned by ValleyDayGame (not by GameScreen) so it survives screen switches.
@@ -120,6 +123,14 @@ public class ValleyDayGame extends Game {
     /** Returns the current map. */
     public GameMap getMap() {
         return map;
+    }
+
+    public void setStatusMessage(String statusMessage) {
+        this.statusMessage = statusMessage;
+    }
+
+    public String getStatusMessage() {
+        return statusMessage;
     }
 
     /**
