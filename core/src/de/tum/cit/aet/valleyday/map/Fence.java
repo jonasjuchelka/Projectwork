@@ -4,16 +4,15 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import de.tum.cit.aet.valleyday.texture.SpriteSheet;
 
 /**
- * Indestructible fence tile (currently same sprite as debris).
+ * Indestructible fence tile.
  */
 public class Fence extends Tile {
-
     private final TextureRegion appearance;
 
     public Fence(float x, float y) {
         super(x, y);
-        // Placeholder: same as debris (row 8, col 3)
-        this.appearance = SpriteSheet.BASIC_TILES.at(8, 3);
+        // Fence: Fance_Gate.png row 2, col 2
+        this.appearance = SpriteSheet.FENCE.at(2, 2);
     }
 
     @Override

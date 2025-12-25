@@ -27,7 +27,6 @@ public class MenuScreen implements Screen {
     public MenuScreen(ValleyDayGame game) {
         var camera = new OrthographicCamera();
         camera.zoom = 1.5f;
-
         Viewport viewport = new ScreenViewport(camera);
         stage = new Stage(viewport, game.getSpriteBatch());
 
@@ -35,30 +34,32 @@ public class MenuScreen implements Screen {
         table.setFillParent(true);
         stage.addActor(table);
 
-        table.add(new Label("Valley Day", game.getSkin(), "title"))
-                .padBottom(80)
-                .row();
+        // Title
+        table.add(new Label("Valley Day", game.getSkin(), "title")).padBottom(80).row();
 
-        // Go To Game button (loads map-1.properties)
-        TextButton goToGameButton = new TextButton("Go To Game", game.getSkin());
-        table.add(goToGameButton).width(300).row();
-
-        goToGameButton.addListener(new ChangeListener() {
+        // Map 1 button
+        TextButton map1Button = new TextButton("Map 1", game.getSkin());
+        table.add(map1Button).width(300).row();
+        map1Button.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                game.getMap().loadFromProperties(Gdx.files.internal("maps/map-1.properties"));
+                game.getMap().loadFromProperties(
+                        Gdx.files.internal("maps/map-1.properties")   // <-- fixed
+                );
                 game.goToGame();
             }
         });
 
-        // Load Map button (loads map-2.properties)
-        TextButton loadMapButton = new TextButton("Load Map", game.getSkin());
-        table.add(loadMapButton).width(300).row();
 
-        loadMapButton.addListener(new ClickListener() {
+        // Map 2 button
+        TextButton map2Button = new TextButton("Map 2", game.getSkin());
+        table.add(map2Button).width(300).row();
+        map2Button.addListener(new ChangeListener() {
             @Override
-            public void clicked(InputEvent event, float x, float y) {
-                game.getMap().loadFromProperties(Gdx.files.internal("maps/map-2.properties"));
+            public void changed(ChangeEvent event, Actor actor) {
+                game.getMap().loadFromProperties(
+                        Gdx.files.internal("maps/map-2.properties")   // <-- fixed
+                );
                 game.goToGame();
             }
         });
@@ -66,7 +67,6 @@ public class MenuScreen implements Screen {
         // Exit button
         TextButton exitButton = new TextButton("Exit", game.getSkin());
         table.add(exitButton).width(300).row();
-
         exitButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {

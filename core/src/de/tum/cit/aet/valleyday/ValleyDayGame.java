@@ -5,15 +5,16 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
+import com.badlogic.gdx.files.FileHandle;
+
 import de.tum.cit.aet.valleyday.audio.MusicTrack;
 import de.tum.cit.aet.valleyday.map.GameMap;
 import de.tum.cit.aet.valleyday.screen.GameScreen;
 import de.tum.cit.aet.valleyday.screen.MenuScreen;
+
 import games.spooky.gdx.nativefilechooser.NativeFileChooser;
-import com.badlogic.gdx.files.FileHandle;
 import games.spooky.gdx.nativefilechooser.NativeFileChooserCallback;
 import games.spooky.gdx.nativefilechooser.NativeFileChooserConfiguration;
-
 
 /**
  * The ValleyDayGame class represents the core of the Valley Day game.
@@ -21,26 +22,21 @@ import games.spooky.gdx.nativefilechooser.NativeFileChooserConfiguration;
  */
 public class ValleyDayGame extends Game {
 
-    /**
-     * Sprite Batch for rendering game elements.
-     * This eats a lot of memory, so we only want one of these.
-     */
+    /** Sprite Batch for rendering game elements. */
     private SpriteBatch spriteBatch;
 
     /** The game's UI skin. This is used to style the game's UI elements. */
     private Skin skin;
-    
+
     /**
      * The file chooser for loading map files from the user's computer.
-     * This will give you access to a {@link com.badlogic.gdx.files.FileHandle} object,
-     * which you can use to read the contents of the map file as a String, and then parse it into a {@link GameMap}.
+     * This will give you a {@link FileHandle} which can be passed to {@link GameMap#loadFromProperties(FileHandle)}.
      */
     private final NativeFileChooser fileChooser;
-    
+
     /**
      * The map. This is where all the game objects are stored.
-     * This is owned by {@link ValleyDayGame} and not by {@link GameScreen}
-     * because the map should not be destroyed if we temporarily switch to another screen.
+     * Owned by ValleyDayGame (not by GameScreen) so it survives screen switches.
      */
     private GameMap map;
 
@@ -54,63 +50,67 @@ public class ValleyDayGame extends Game {
     }
 
     /**
-     * Called when the game is created. Initializes the SpriteBatch and Skin.
-     * During the class constructor, libGDX is not fully initialized yet.
-     * Therefore this method serves as a second constructor for the game,
-     * and we can use libGDX resources here.
+     * Called when the game is created. Initializes the SpriteBatch, Skin and an empty GameMap,
+     * then shows the main menu. No default map is loaded here; the menu buttons decide
+     * which map to load (map‑1, map‑2, or from file chooser).
      */
     @Override
     public void create() {
-        this.spriteBatch = new SpriteBatch(); // Create SpriteBatch for rendering
-        this.skin = new Skin(Gdx.files.internal("skin/craftacular/craftacular-ui.json")); // Load UI skin
-        this.map = new GameMap(this); // Create a new game map (you should change this to load the map from a file instead)
-        MusicTrack.BACKGROUND.play(); // Play some background music
-        goToMenu(); // Navigate to the menu screen
+        this.spriteBatch = new SpriteBatch();
+        this.skin = new Skin(Gdx.files.internal("skin/craftacular/craftacular-ui.json"));
+
+        // Create an empty map; MenuScreen will call map.loadFromProperties(...)
+        this.map = new GameMap(this);
+
+        MusicTrack.BACKGROUND.play();
+        goToMenu();
     }
 
+    /**
+     * Replaces the current map with a fresh empty GameMap.
+     * You can optionally call loadFromProperties(...) on it afterwards.
+     */
     public void resetMap() {
-        this.map = new GameMap(this);  // new default map
+        this.map = new GameMap(this);
     }
 
-
-    /**
-     * Switches to the menu screen.
-     */
+    /** Switches to the menu screen. */
     public void goToMenu() {
-        this.setScreen(new MenuScreen(this)); // Set the current screen to MenuScreen
+        this.setScreen(new MenuScreen(this));
     }
 
-    /**
-     * Switches to the game screen.
-     */
+    /** Switches to the game screen. */
     public void goToGame() {
-        this.setScreen(new GameScreen(this)); // Set the current screen to GameScreen
+        this.setScreen(new GameScreen(this));
     }
 
     /**
-     * Opens file chooser to load a map file.
+     * Opens a native file chooser to load a map file from disk.
+     * After loading, it immediately switches to the GameScreen.
      */
     public void loadMapFromFileChooser() {
-        fileChooser.chooseFile(null, new NativeFileChooserCallback() {
+        NativeFileChooserConfiguration config = new NativeFileChooserConfiguration();
+        // You can configure filters/initial directory on 'config' if needed.
+
+        fileChooser.chooseFile(config, new NativeFileChooserCallback() {
             @Override
             public void onFileChosen(FileHandle file) {
                 Gdx.app.log("MapLoad", "Selected: " + file.path());
                 map.loadFromProperties(file);
                 goToGame();
             }
+
             @Override
             public void onCancellation() {
                 Gdx.app.log("MapLoad", "Cancelled");
             }
+
             @Override
             public void onError(Exception e) {
                 Gdx.app.error("MapLoad", "Error: " + e.getMessage());
             }
         });
     }
-
-
-
 
     /** Returns the skin for UI elements. */
     public Skin getSkin() {
@@ -121,15 +121,14 @@ public class ValleyDayGame extends Game {
     public SpriteBatch getSpriteBatch() {
         return spriteBatch;
     }
-    
-    /** Returns the current map, if there is one. */
+
+    /** Returns the current map. */
     public GameMap getMap() {
         return map;
     }
-    
+
     /**
      * Switches to the given screen and disposes of the previous screen.
-     * @param screen the new screen
      */
     @Override
     public void setScreen(Screen screen) {
@@ -143,9 +142,11 @@ public class ValleyDayGame extends Game {
     /** Cleans up resources when the game is disposed. */
     @Override
     public void dispose() {
-        getScreen().hide(); // Hide the current screen
-        getScreen().dispose(); // Dispose the current screen
-        spriteBatch.dispose(); // Dispose the spriteBatch
-        skin.dispose(); // Dispose the skin
+        if (getScreen() != null) {
+            getScreen().hide();
+            getScreen().dispose();
+        }
+        spriteBatch.dispose();
+        skin.dispose();
     }
 }
