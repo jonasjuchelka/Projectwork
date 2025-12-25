@@ -78,7 +78,7 @@ public class GameScreen implements Screen {
             }
         });
 
-        uiTable.add(musicToggleButton).width(160f).height(45f);
+        uiTable.add(musicToggleButton).width(220f).height(48f);
         uiStage.addActor(uiTable);
     }
 
@@ -252,8 +252,17 @@ public class GameScreen implements Screen {
         TextureRegion texture = drawable.getCurrentAppearance();
         if (texture == null) return;
 
-        float x = drawable.getX() * TILE_SIZE_PX * SCALE;
-        float y = drawable.getY() * TILE_SIZE_PX * SCALE;
+        float renderX = drawable.getX();
+        float renderY = drawable.getY();
+
+        // Center player sprite on its physics body so visual matches collisions
+        if (drawable instanceof de.tum.cit.aet.valleyday.map.Player) {
+            renderX -= 0.5f;
+            renderY -= 0.5f;
+        }
+
+        float x = renderX * TILE_SIZE_PX * SCALE;
+        float y = renderY * TILE_SIZE_PX * SCALE;
         float width = texture.getRegionWidth() * SCALE;
         float height = texture.getRegionHeight() * SCALE;
 

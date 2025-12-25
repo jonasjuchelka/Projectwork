@@ -88,23 +88,23 @@ public class Player implements Drawable {
         float yVelocity = 0;
 
         // W key: move up
-        if (Gdx.input.isKeyPressed(Input.Keys.W)) {
+        if (Gdx.input.isKeyPressed(Input.Keys.W) || Gdx.input.isKeyPressed(Input.Keys.UP)) {
             yVelocity = MOVEMENT_SPEED;
             currentDirection = Direction.UP;
         }
         // S key: move down
-        else if (Gdx.input.isKeyPressed(Input.Keys.S)) {
+        else if (Gdx.input.isKeyPressed(Input.Keys.S) || Gdx.input.isKeyPressed(Input.Keys.DOWN)) {
             yVelocity = -MOVEMENT_SPEED;
             currentDirection = Direction.DOWN;
         }
 
         // A key: move left
-        if (Gdx.input.isKeyPressed(Input.Keys.A)) {
+        if (Gdx.input.isKeyPressed(Input.Keys.A) || Gdx.input.isKeyPressed(Input.Keys.LEFT)) {
             xVelocity = -MOVEMENT_SPEED;
             currentDirection = Direction.LEFT;
         }
         // D key: move right
-        else if (Gdx.input.isKeyPressed(Input.Keys.D)) {
+        else if (Gdx.input.isKeyPressed(Input.Keys.D) || Gdx.input.isKeyPressed(Input.Keys.RIGHT)) {
             xVelocity = MOVEMENT_SPEED;
             currentDirection = Direction.RIGHT;
         }
