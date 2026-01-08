@@ -1,23 +1,30 @@
 package de.tum.cit.aet.valleyday.tiles;
 
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import de.tum.cit.aet.valleyday.texture.SpriteSheet;
+import de.tum.cit.aet.valleyday.texture.Textures;
 
-/**
- * Exit (farm gate) tile.
- */
 public class Exit extends Tile {
+    private boolean unlocked = false;
 
-    private final TextureRegion appearance;
-
-    public Exit(float x, float y) {
+    public Exit(int x, int y) {
         super(x, y);
-        // Exit: row 7, col 3
-        this.appearance = SpriteSheet.BASIC_TILES.at(7, 3);
     }
 
     @Override
     public TextureRegion getCurrentAppearance() {
-        return appearance;
+        return Textures.EXIT;
+    }
+
+    @Override
+    public boolean isWalkable() {
+        return unlocked;
+    }
+
+    public void unlock() {
+        this.unlocked = true;
+    }
+
+    public boolean isUnlocked() {
+        return unlocked;
     }
 }

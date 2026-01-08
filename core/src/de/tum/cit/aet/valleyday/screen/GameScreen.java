@@ -3,199 +3,158 @@ package de.tum.cit.aet.valleyday.screen;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
-import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.badlogic.gdx.utils.ScreenUtils;
 import de.tum.cit.aet.valleyday.ValleyDayGame;
 import de.tum.cit.aet.valleyday.map.GameMap;
-import de.tum.cit.aet.valleyday.texture.Drawable;
+import de.tum.cit.aet.valleyday.map.GameObject;
+import de.tum.cit.aet.valleyday.map.Player;
+import de.tum.cit.aet.valleyday.map.WildlifeVisitor;
 import de.tum.cit.aet.valleyday.texture.Textures;
+import de.tum.cit.aet.valleyday.tiles.Tile;
 
-/**
- * The GameScreen class is responsible for rendering the gameplay screen.
- * It handles the game logic and rendering of the game elements.
- */
 public class GameScreen implements Screen {
-
-    /**
-     * The size of a grid cell in pixels. This allows us to think of coordinates in terms of square grid tiles,
-     * e.g. (x1, y1) is the bottom left corner of the map rather than absolute pixel coordinates.
-     */
-    public static final int TILE_SIZE_PX = 16;
-
-    /**
-     * The scale of the game. This is used to make everything in the game look bigger or smaller.
-     */
-    public static final int SCALE = 4;
-
     private final ValleyDayGame game;
-    private final SpriteBatch spriteBatch;
-    private final GameMap map;
-    private final Hud hud;
-    private final OrthographicCamera mapCamera;
+    private final SpriteBatch batch;
+    private OrthographicCamera camera;
+    private GameMap gameMap;
+    private BitmapFont font;
+    private boolean mapLoaded = false;
 
-    /**
-     * Constructor for GameScreen. Sets up the camera and font.
-     *
-     * @param game The main game class, used to access global resources and methods.
-     */
-    public GameScreen(ValleyDayGame game) {
+    public GameScreen(ValleyDayGame game, String mapFilePath) {
         this.game = game;
-        this.spriteBatch = game.getSpriteBatch();
-        this.map = game.getMap();
-        this.hud = new Hud(spriteBatch, game.getSkin().getFont("font"));
+        this.batch = game.getBatch();
 
-        // Create and configure the camera for the game view
-        this.mapCamera = new OrthographicCamera();
-        this.mapCamera.setToOrtho(false);
-    }
+        // FIX: Better camera setup
+        this.camera = new OrthographicCamera();
+        this.camera.setToOrtho(false, 30, 30);  // Changed from 21, 21
+        this.camera.position.set(10, 10, 0);     // Start at center of map
+        this.camera.update();
 
-    /**
-     * The render method is called every frame to render the game.
-     *
-     * @param deltaTime The time in seconds since the last render.
-     */
-    @Override
-    public void render(float deltaTime) {
-        // Check for escape key press to go back to the menu
-        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
-            game.goToMenu();
-        }
+        this.font = new BitmapFont();
 
-        // Clear the previous frame from the screen, or else the picture smears
-        ScreenUtils.clear(Color.BLACK);
+        Gdx.app.log("GameScreen", "Creating GameScreen with map: " + mapFilePath);
 
-        // Cap frame time to 250ms to prevent spiral of death
-        float frameTime = Math.min(deltaTime, 0.250f);
+        this.gameMap = new GameMap(game);
 
-        // Update the map state
-        map.tick(frameTime);
+        if (mapFilePath != null) {
+            try {
+                FileHandle mapFile = Gdx.files.internal(mapFilePath);
+                Gdx.app.log("GameScreen", "Map file exists: " + mapFile.exists());
+                Gdx.app.log("GameScreen", "Map file path: " + mapFile.path());
 
-        // Update the camera
-        updateCamera();
-
-        // Render the map on the screen
-        renderMap();
-
-        // Render the HUD on the screen
-        hud.render();
-    }
-
-    /**
-     * Updates the camera to match the current state of the game.
-     * Currently, this just centers the camera at the map center.
-     */
-    private void updateCamera() {
-        mapCamera.setToOrtho(false);
-        mapCamera.position.x = map.getWidth() * TILE_SIZE_PX * SCALE / 2f;
-        mapCamera.position.y = map.getHeight() * TILE_SIZE_PX * SCALE / 2f;
-        mapCamera.update();
-    }
-
-    /**
-     * Renders the map including all tiles, chest, game objects, and player.
-     */
-    private void renderMap() {
-        // Use the camera
-        spriteBatch.setProjectionMatrix(mapCamera.combined);
-        spriteBatch.begin();
-
-        // DEBUG: how many objects does the screen see?
-        Gdx.app.log("Objects", "Objects in map when rendering: " + map.getGameObjects().size());
-
-        // Draw all tiles from the grid
-        int[][] tileGrid = map.getTileGrid();
-        for (int x = 0; x < map.getWidth(); x++) {
-            for (int y = 0; y < map.getHeight(); y++) {
-                int tileType = tileGrid[x][y];
-
-                // Only draw tiles with valid types (not -1 for empty)
-                if (tileType >= 0) {
-                    drawTile(spriteBatch, x, y, tileType);
+                if (mapFile.exists()) {
+                    gameMap.loadFromProperties(mapFile);
+                    mapLoaded = true;
+                    Gdx.app.log("GameScreen", "Map loaded successfully!");
+                } else {
+                    Gdx.app.error("GameScreen", "Map file not found!");
                 }
+            } catch (Exception e) {
+                Gdx.app.error("GameScreen", "Error loading map: " + e.getMessage());
+                e.printStackTrace();
             }
         }
-
-        // Draw chest
-        if (map.getChest() != null) {
-            draw(spriteBatch, map.getChest());
-        }
-
-        // Draw game objects (decorations, debris, flowers, etc.)
-        for (Drawable obj : map.getGameObjects()) {
-            draw(spriteBatch, obj);
-        }
-
-        // Draw player on top
-        if (map.getPlayer() != null) {
-            draw(spriteBatch, map.getPlayer());
-        }
-
-        spriteBatch.end();
     }
 
-    /**
-     * Draw a single tile at grid position (x, y) with the given type.
-     * @param batch The SpriteBatch to draw with
-     * @param x Tile X coordinate
-     * @param y Tile Y coordinate
-     * @param tileType The tile type (0=wall, 1=destructible, etc.)
-     */
-    private void drawTile(SpriteBatch batch, int x, int y, int tileType) {
-        // Get the texture for this tile type
-        TextureRegion texture = Textures.getTileTexture(tileType);
-        if (texture == null) {
-            return;  // Skip if no texture available
+    @Override
+    public void show() {
+        Gdx.app.log("GameScreen", "Showing gameplay. Map loaded: " + mapLoaded);
+    }
+
+    @Override
+    public void render(float delta) {
+        Gdx.gl.glClearColor(0.5f, 0.5f, 0.8f, 1f);
+        Gdx.gl.glClear(com.badlogic.gdx.graphics.GL20.GL_COLOR_BUFFER_BIT);
+
+        if (gameMap != null) {
+            gameMap.tick(delta);
+            updateCamera();
+
+            // IMPORTANT: Set projection BEFORE batch.begin()
+            batch.setProjectionMatrix(camera.combined);
+            batch.begin();
+            renderGame();
+            batch.end();
         }
 
-        // Convert tile coordinates to pixel coordinates
-        float px = x * TILE_SIZE_PX * SCALE;
-        float py = y * TILE_SIZE_PX * SCALE;
+        // HUD - uses screen coordinates (different projection)
+        batch.getProjectionMatrix().setToOrtho2D(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        batch.setProjectionMatrix(batch.getProjectionMatrix());
+        batch.begin();
+        font.draw(batch, "Valley Day - GameScreen Active", 10, Gdx.graphics.getHeight() - 10);
+        font.draw(batch, "Map loaded: " + mapLoaded, 10, Gdx.graphics.getHeight() - 30);
+        font.draw(batch, "WASD to move, ESC to menu", 10, Gdx.graphics.getHeight() - 50);
 
-        // Get texture dimensions and scale
-        float width = texture.getRegionWidth() * SCALE;
-        float height = texture.getRegionHeight() * SCALE;
+        if (gameMap != null && gameMap.getPlayer() != null) {
+            Player p = gameMap.getPlayer();
+            font.draw(batch, "Player: (" + (int)p.getX() + ", " + (int)p.getY() + ")", 10, Gdx.graphics.getHeight() - 70);
+        }
+        batch.end();
 
-        // Draw the tile
-        batch.draw(texture, px, py, width, height);
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+            game.returnToMenu();
+        }
     }
 
-    /**
-     * Draws this object on the screen. The texture will be scaled by the game scale and the tile size.
-     * This should only be called between spriteBatch.begin() and spriteBatch.end(), e.g. in the renderMap() method.
-     *
-     * @param spriteBatch The SpriteBatch to draw with.
-     * @param drawable The drawable object to render.
-     */
-    private static void draw(SpriteBatch spriteBatch, Drawable drawable) {
-        TextureRegion texture = drawable.getCurrentAppearance();
 
-        // Drawable coordinates are in tiles, so we need to scale them to pixels
-        float x = drawable.getX() * TILE_SIZE_PX * SCALE;
-        float y = drawable.getY() * TILE_SIZE_PX * SCALE;
+    private void renderGame() {
+        try {
+            Tile[][] tiles = gameMap.getTiles();
 
-        // Additionally scale everything by the game scale
-        float width = texture.getRegionWidth() * SCALE;
-        float height = texture.getRegionHeight() * SCALE;
+            // Draw all tiles
+            for (int x = 0; x < gameMap.getWidth(); x++) {
+                for (int y = 0; y < gameMap.getHeight(); y++) {
+                    Tile tile = tiles[x][y];
+                    if (tile != null && tile.getCurrentAppearance() != null) {
+                        batch.draw(tile.getCurrentAppearance(), x, y, 1, 1);
+                    }
+                }
+            }
 
-        spriteBatch.draw(texture, x, y, width, height);
+            // Draw objects
+            for (GameObject obj : gameMap.getGameObjects()) {
+                if (obj.getCurrentAppearance() != null) {
+                    batch.draw(obj.getCurrentAppearance(), obj.getX(), obj.getY(), 1, 1);
+                }
+            }
+
+            // Draw wildlife
+            for (WildlifeVisitor visitor : gameMap.getWildlifeVisitors()) {
+                if (visitor.getCurrentAppearance() != null) {
+                    batch.draw(visitor.getCurrentAppearance(), visitor.getX(), visitor.getY(), 1, 1);
+                }
+            }
+
+            // Draw player
+            Player player = gameMap.getPlayer();
+            if (player != null && player.getCurrentAppearance() != null) {
+                batch.draw(player.getCurrentAppearance(), player.getX(), player.getY(), 1, 1);
+            }
+
+        } catch (Exception e) {
+            Gdx.app.error("GameScreen", "Error rendering: " + e.getMessage());
+        }
     }
 
-    /**
-     * Called when the window is resized. This is where the camera is updated to match the new window size.
-     *
-     * @param width The new window width.
-     * @param height The new window height.
-     */
+
+    private void updateCamera() {
+        Player player = gameMap.getPlayer();
+        if (player != null) {
+            camera.position.set(player.getX(), player.getY(), 0);
+            camera.update();
+        }
+    }
+
     @Override
     public void resize(int width, int height) {
-        mapCamera.setToOrtho(false);
-        hud.resize(width, height);
+        float aspectRatio = (float) width / (float) height;
+        camera.setToOrtho(false, 30 * aspectRatio, 30);  // Better scaling
+        camera.update();
     }
 
-    // Unused methods from the Screen interface
     @Override
     public void pause() {}
 
@@ -203,11 +162,10 @@ public class GameScreen implements Screen {
     public void resume() {}
 
     @Override
-    public void show() {}
-
-    @Override
     public void hide() {}
 
     @Override
-    public void dispose() {}
+    public void dispose() {
+        if (font != null) font.dispose();
+    }
 }

@@ -1,76 +1,99 @@
 package de.tum.cit.aet.valleyday.texture;
 
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.Pixmap;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 
-/**
- * Contains all texture constants used in the game.
- */
 public class Textures {
+    public static TextureRegion FENCE;
+    public static TextureRegion DEBRIS;
+    public static TextureRegion SOIL_EMPTY;
+    public static TextureRegion ENTRANCE;
+    public static TextureRegion EXIT;
 
-    // ===== Existing Sprites =====
-    public static final TextureRegion FLOWERS   = SpriteSheet.BASIC_TILES.at(2, 5);
-    public static final TextureRegion CHEST     = SpriteSheet.BASIC_TILES.at(5, 5);
-    public static final TextureRegion ENTRANCE  = SpriteSheet.BASIC_TILES.at(7, 1);
-    public static final TextureRegion DEBRIS    = SpriteSheet.BASIC_TILES.at(8, 3);
-    public static final TextureRegion FENCE     = SpriteSheet.FENCE.at(2, 2);
+    public static TextureRegion CROP_SEED;
+    public static TextureRegion CROP_SPROUT;
+    public static TextureRegion CROP_MATURE;
+    public static TextureRegion CROP_ROTTEN;
 
-    // ===== Objects/Decorations (from OBJECTS sheet) =====
-    public static final TextureRegion OBJECT_TORCH  = SpriteSheet.OBJECTS.at(1, 1);
-    public static final TextureRegion OBJECT_DOOR   = SpriteSheet.OBJECTS.at(1, 2);
-    public static final TextureRegion OBJECT_BOX    = SpriteSheet.OBJECTS.at(1, 3);
-    public static final TextureRegion OBJECT_BARREL = SpriteSheet.OBJECTS.at(1, 4);
-    public static final TextureRegion OBJECT_SIGN   = SpriteSheet.OBJECTS.at(1, 5);
-    public static final TextureRegion OBJECT_BUSH   = SpriteSheet.OBJECTS.at(2, 1);
-    public static final TextureRegion OBJECT_TREE   = SpriteSheet.OBJECTS.at(2, 2);
+    public static TextureRegion SHOVEL;
+    public static TextureRegion FERTILIZER;
+    public static TextureRegion WATERING_CAN;
 
-    // ===== NPCs (from CREATURES sheet) =====
-    public static final TextureRegion NPC_VILLAGER = SpriteSheet.CREATURES.at(1, 1);
-    public static final TextureRegion NPC_MERCHANT = SpriteSheet.CREATURES.at(1, 2);
-    public static final TextureRegion NPC_GUARD    = SpriteSheet.CREATURES.at(1, 3);
+    public static TextureRegion SNAIL;
+    public static TextureRegion RAT;
+    public static TextureRegion CROW;
 
-    // ===== Tile Sprites (type 0-6) =====
-    public static final TextureRegion TILE_WALL         = SpriteSheet.BASIC_TILES.at(1, 1); // 0
-    public static final TextureRegion TILE_DESTRUCTIBLE = SpriteSheet.BASIC_TILES.at(1, 2); // 1
-    public static final TextureRegion TILE_EXIT         = SpriteSheet.BASIC_TILES.at(7, 3); // 2
-    public static final TextureRegion TILE_SPECIAL_3    = SpriteSheet.BASIC_TILES.at(1, 4); // 3
-    public static final TextureRegion TILE_SPECIAL_4    = SpriteSheet.BASIC_TILES.at(1, 5); // 4
-    public static final TextureRegion TILE_SPECIAL_5    = SpriteSheet.BASIC_TILES.at(2, 1); // 5
-    public static final TextureRegion TILE_SPECIAL_6    = SpriteSheet.BASIC_TILES.at(2, 2); // 6
+    public static TextureRegion PLAYER;
+    public static TextureRegion CHEST;
+    public static TextureRegion FLOWERS;
 
-    public static TextureRegion getTileTexture(int type) {
-        return switch (type) {
-            case 0 -> TILE_WALL;
-            case 1 -> TILE_DESTRUCTIBLE;
-            case 2 -> TILE_EXIT;
-            case 3 -> TILE_SPECIAL_3;
-            case 4 -> TILE_SPECIAL_4;
-            case 5 -> TILE_SPECIAL_5;
-            case 6 -> TILE_SPECIAL_6;
-            default -> null;
-        };
+    private static Texture placeholderTexture;
+
+    public static void initialize() {
+        Gdx.app.log("Textures", "Initializing textures...");
+
+        // White placeholder for tiles
+        Pixmap pixmap = new Pixmap(32, 32, Pixmap.Format.RGBA8888);
+        pixmap.setColor(1, 1, 1, 1);  // White
+        pixmap.fill();
+        placeholderTexture = new Texture(pixmap);
+        pixmap.dispose();
+
+        TextureRegion placeholder = new TextureRegion(placeholderTexture);
+
+        // Create RED player texture
+        Pixmap playerPixmap = new Pixmap(32, 32, Pixmap.Format.RGBA8888);
+        playerPixmap.setColor(1, 0, 0, 1);  // RED
+        playerPixmap.fill();
+        Texture playerTexture = new Texture(playerPixmap);
+        playerPixmap.dispose();
+
+        // Create GREEN wildlife texture
+        Pixmap wildlifePixmap = new Pixmap(32, 32, Pixmap.Format.RGBA8888);
+        wildlifePixmap.setColor(0, 1, 0, 1);  // GREEN
+        wildlifePixmap.fill();
+        Texture wildlifeTexture = new Texture(wildlifePixmap);
+        wildlifePixmap.dispose();
+
+        TextureRegion playerRegion = new TextureRegion(playerTexture);
+        TextureRegion wildlifeRegion = new TextureRegion(wildlifeTexture);
+
+        // Assign textures
+        FENCE = placeholder;
+        DEBRIS = placeholder;
+        SOIL_EMPTY = placeholder;
+        ENTRANCE = placeholder;
+        EXIT = placeholder;
+        CROP_SEED = placeholder;
+        CROP_SPROUT = placeholder;
+        CROP_MATURE = placeholder;
+        CROP_ROTTEN = placeholder;
+        SHOVEL = placeholder;
+        FERTILIZER = placeholder;
+        WATERING_CAN = placeholder;
+
+        SNAIL = wildlifeRegion;
+        RAT = wildlifeRegion;
+        CROW = wildlifeRegion;
+
+        PLAYER = playerRegion;  // RED player!
+        CHEST = placeholder;
+        FLOWERS = placeholder;
+
+        Gdx.app.log("Textures", "Textures initialized successfully!");
+    }
+
+
+    public static void dispose() {
+        if (placeholderTexture != null) {
+            placeholderTexture.dispose();
+        }
     }
 
     public static TextureRegion getRandomObject() {
-        int rand = (int)(Math.random() * 7);
-        return switch (rand) {
-            case 0 -> OBJECT_TORCH;
-            case 1 -> OBJECT_DOOR;
-            case 2 -> OBJECT_BOX;
-            case 3 -> OBJECT_BARREL;
-            case 4 -> OBJECT_SIGN;
-            case 5 -> OBJECT_BUSH;
-            case 6 -> OBJECT_TREE;
-            default -> OBJECT_BOX;
-        };
-    }
-
-    public static TextureRegion getRandomNPC() {
-        int rand = (int)(Math.random() * 3);
-        return switch (rand) {
-            case 0 -> NPC_VILLAGER;
-            case 1 -> NPC_MERCHANT;
-            case 2 -> NPC_GUARD;
-            default -> NPC_VILLAGER;
-        };
+        TextureRegion[] objects = {SNAIL, DEBRIS, SHOVEL, CHEST, FLOWERS};
+        return objects[(int) (Math.random() * objects.length)];
     }
 }

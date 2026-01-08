@@ -2,24 +2,19 @@ package de.tum.cit.aet.valleyday.map;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
-import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Vector2;
-import com.badlogic.gdx.physics.box2d.Body;
-import com.badlogic.gdx.physics.box2d.BodyDef;
-import com.badlogic.gdx.physics.box2d.PolygonShape;
-import com.badlogic.gdx.physics.box2d.World;
+import com.badlogic.gdx.physics.box2d.*;
 import de.tum.cit.aet.valleyday.ValleyDayGame;
+import de.tum.cit.aet.valleyday.texture.Textures;
+import de.tum.cit.aet.valleyday.tiles.*;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import de.tum.cit.aet.valleyday.texture.Textures;
-import de.tum.cit.aet.valleyday.tiles.Tile;
-
 
 public class GameMap {
-
     static {
-        com.badlogic.gdx.physics.box2d.Box2D.init();
+        Box2D.init();
     }
 
     private static final float TIME_STEP = 1f / 60f;
@@ -29,55 +24,40 @@ public class GameMap {
     private static final int MAP_HEIGHT = 21;
 
     private float physicsTime = 0;
-
     private final ValleyDayGame game;
     private final World world;
     private final Player player;
-    private final Chest chest;
-
-    // 21×21 tile grid: -1=empty, 0=wall, 1=destructible, 2-6=special
-    private final int[][] tileGrid;
-    // List of decorative game objects on the map
+    private final Tile[][] tiles;
     private final List<GameObject> gameObjects;
-
-
+    private final List<WildlifeVisitor> wildlifeVisitors;
 
     public GameMap(ValleyDayGame game) {
         this.game = game;
         this.world = new World(Vector2.Zero, true);
         this.player = new Player(this.world, 1, 3);
-        this.chest = new Chest(this.world, 3, 3);
-        // Initialize game objects list
+        this.tiles = new Tile[MAP_WIDTH][MAP_HEIGHT];
         this.gameObjects = new ArrayList<>();
+        this.wildlifeVisitors = new ArrayList<>();
 
-
-        // Initialize empty grid
-        this.tileGrid = new int[MAP_WIDTH][MAP_HEIGHT];
         for (int x = 0; x < MAP_WIDTH; x++) {
             for (int y = 0; y < MAP_HEIGHT; y++) {
-                tileGrid[x][y] = -1;  // empty by default
+                tiles[x][y] = new SoilTile(x, y);
             }
         }
     }
 
-    /**
-     * Load map from .properties file.
-     * Format: x,y=type
-     */
     public void loadFromProperties(FileHandle file) {
         if (file == null || !file.exists()) {
             Gdx.app.log("MapLoad", "File not found: " + file);
             return;
         }
 
-        // Clear grid
         for (int x = 0; x < MAP_WIDTH; x++) {
             for (int y = 0; y < MAP_HEIGHT; y++) {
-                tileGrid[x][y] = -1;
+                tiles[x][y] = new SoilTile(x, y);
             }
         }
 
-        // Parse file
         String content = file.readString();
         String[] lines = content.split("\\r?\\n");
 
@@ -97,116 +77,91 @@ public class GameMap {
                 int type = Integer.parseInt(parts[1].trim());
 
                 if (x >= 0 && x < MAP_WIDTH && y >= 0 && y < MAP_HEIGHT) {
-                    tileGrid[x][y] = type;
+                    tiles[x][y] = createTile(x, y, type);
                 }
             } catch (NumberFormatException e) {
-                // skip
+                // skip invalid lines
             }
         }
 
-        // Create physics bodies for walls
         createWallBodies();
-
-        // Spawn random objects on the map
         spawnGameObjects();
-
+        spawnWildlife();
         Gdx.app.log("MapLoad", "Successfully loaded: " + file.name());
     }
 
-    /**
-     * Create Box2D static bodies for all walls and destructible blocks.
-     * This allows the physics engine to handle collisions automatically.
-     */
+    private Tile createTile(int x, int y, int type) {
+        return switch (type) {
+            case 0 -> new Fence(x, y);
+            case 1 -> new Debris(x, y, new SoilTile(x, y));
+            case 2 -> new Entrance(x, y);
+            case 3 -> new Exit(x, y);
+            case 4 -> new ToolItem(x, y, ToolItem.ItemType.SHOVEL);
+            case 5 -> new ToolItem(x, y, ToolItem.ItemType.FERTILIZER);
+            case 6 -> new ToolItem(x, y, ToolItem.ItemType.WATERING_CAN);
+            default -> new SoilTile(x, y);
+        };
+    }
+
     private void createWallBodies() {
-        // Create a static body for each wall/destructible tile
         for (int x = 0; x < MAP_WIDTH; x++) {
             for (int y = 0; y < MAP_HEIGHT; y++) {
-                int tileType = tileGrid[x][y];
-
-                // Type 0 = wall, Type 1 = destructible block
-                if (tileType == 0 || tileType == 1) {
-                    createWallBody(x, y, tileType);
+                Tile tile = tiles[x][y];
+                if (tile instanceof Fence) {
+                    createWallBody(x, y);
                 }
             }
         }
-
-        Gdx.app.log("Collision", "Created wall bodies for map");
     }
 
-    /**
-     * Spawn random game objects on empty tiles (decorations, NPCs, etc.)
-     */
+    private void createWallBody(int x, int y) {
+        BodyDef bodyDef = new BodyDef();
+        bodyDef.type = BodyDef.BodyType.StaticBody;
+        bodyDef.position.set(x + 0.5f, y + 0.5f);
+
+        Body body = world.createBody(bodyDef);
+        PolygonShape shape = new PolygonShape();
+        shape.setAsBox(0.5f, 0.5f);
+        body.createFixture(shape, 1.0f);
+        shape.dispose();
+    }
+
     private void spawnGameObjects() {
         gameObjects.clear();
         Random rand = new Random();
-        int objectCount = 8; // Spawn 8 objects
-        int spawnedCount = 0;
 
-        for (int i = 0; i < objectCount; i++) {
-            int x = 5 + rand.nextInt(10);  // Random x between 5-15
-            int y = 5 + rand.nextInt(10);  // Random y between 5-15
-
-            TextureRegion texture = Textures.getRandomObject();
-
-            if (texture != null) {
-                gameObjects.add(new GameObject(x, y, texture));
-                spawnedCount++;
-                Gdx.app.log("Objects", "Spawned object at (" + x + ", " + y + ")");
-            }
+        for (int i = 0; i < 8; i++) {
+            int x = 5 + rand.nextInt(10);
+            int y = 5 + rand.nextInt(10);
+            gameObjects.add(new GameObject(x, y, Textures.getRandomObject()));
         }
-
-        Gdx.app.log("Objects", "Total spawned: " + spawnedCount);
     }
 
+    private void spawnWildlife() {
+        wildlifeVisitors.clear();
+        Random rand = new Random();
 
-
-    /**
-     * Create a single static Box2D body for a wall or destructible block.
-     * @param x Tile X coordinate
-     * @param y Tile Y coordinate
-     * @param type Tile type (0=wall, 1=destructible)
-     */
-    private void createWallBody(int x, int y, int type) {
-        // Define a static body (doesn't move)
-        BodyDef bodyDef = new BodyDef();
-        bodyDef.type = BodyDef.BodyType.StaticBody;
-        // Position at tile center
-        bodyDef.position.set(x + 0.5f, y + 0.5f);
-
-        // Create the body
-        Body body = world.createBody(bodyDef);
-
-        // Create a box shape (1x1 tile size)
-        PolygonShape shape = new PolygonShape();
-        shape.setAsBox(0.5f, 0.5f);  // 0.5 = half tile (1x1 total)
-
-        // Attach shape to body
-        body.createFixture(shape, 1.0f);
-
-        // Clean up shape (can be disposed after creating fixture)
-        shape.dispose();
-
-        // Store tile type in user data for later reference
-        body.setUserData(type);
-    }
-
-    public int getTileType(int x, int y) {
-        if (x >= 0 && x < MAP_WIDTH && y >= 0 && y < MAP_HEIGHT) {
-            return tileGrid[x][y];
+        for (int i = 0; i < 3; i++) {
+            int x = 3 + rand.nextInt(15);
+            int y = 3 + rand.nextInt(15);
+            WildlifeVisitor.WildlifeType type = WildlifeVisitor.WildlifeType.values()[rand.nextInt(3)];
+            wildlifeVisitors.add(new WildlifeVisitor(world, x, y, type));
         }
-        return -1;
-    }
-
-    public int[][] getTileGrid() {
-        return tileGrid;
-    }
-
-    public List<GameObject> getGameObjects() {
-        return gameObjects;
     }
 
     public void tick(float frameTime) {
         this.player.tick(frameTime);
+
+        for (WildlifeVisitor visitor : wildlifeVisitors) {
+            visitor.tick(frameTime);
+        }
+
+        for (int x = 0; x < MAP_WIDTH; x++) {
+            for (int y = 0; y < MAP_HEIGHT; y++) {
+                tiles[x][y].tick(frameTime);
+            }
+        }
+
         doPhysicsStep(frameTime);
     }
 
@@ -222,8 +177,23 @@ public class GameMap {
         return player;
     }
 
-    public Chest getChest() {
-        return chest;
+    public Tile[][] getTiles() {
+        return tiles;
+    }
+
+    public Tile getTile(int x, int y) {
+        if (x >= 0 && x < MAP_WIDTH && y >= 0 && y < MAP_HEIGHT) {
+            return tiles[x][y];
+        }
+        return null;
+    }
+
+    public List<GameObject> getGameObjects() {
+        return gameObjects;
+    }
+
+    public List<WildlifeVisitor> getWildlifeVisitors() {
+        return wildlifeVisitors;
     }
 
     public int getWidth() {
@@ -234,8 +204,7 @@ public class GameMap {
         return MAP_HEIGHT;
     }
 
-    @Deprecated
-    public Tile getTile(int x, int y) {
-        return null;  // Implement concrete Tile types later
+    public World getWorld() {
+        return world;
     }
 }

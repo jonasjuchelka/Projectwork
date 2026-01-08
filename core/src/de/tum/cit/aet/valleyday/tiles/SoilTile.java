@@ -1,23 +1,60 @@
 package de.tum.cit.aet.valleyday.tiles;
 
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import de.tum.cit.aet.valleyday.texture.SpriteSheet;
+import de.tum.cit.aet.valleyday.texture.Textures;
 
-/**
- * Walkable soil tile, may contain a crop.
- */
 public class SoilTile extends Tile {
+    private Crop crop;
 
-    private final TextureRegion appearance;
-
-    public SoilTile(float x, float y) {
+    public SoilTile(int x, int y) {
         super(x, y);
-        // Soil: row 8, col 7
-        this.appearance = SpriteSheet.BASIC_TILES.at(8, 7);
     }
 
     @Override
     public TextureRegion getCurrentAppearance() {
-        return appearance;
+        if (crop != null) {
+            return crop.getCurrentAppearance();
+        }
+        return Textures.SOIL_EMPTY;
+    }
+
+    @Override
+    public void tick(float frameTime) {
+        if (crop != null) {
+            crop.tick(frameTime);
+        }
+    }
+
+    public void plantSeed() {
+        if (crop == null) {
+            crop = new Crop(x, y);
+        }
+    }
+
+    public void harvestCrop() {
+        if (crop != null && crop.isMature()) {
+            crop = null;
+        }
+    }
+
+    public boolean hasCrop() {
+        return crop != null;
+    }
+
+    public Crop getCrop() {
+        return crop;
+    }
+
+    public void applyFertilizer() {
+        if (crop != null) {
+            crop.advanceGrowth();
+        }
+    }
+
+    public void applyWateringCan() {
+        if (crop != null && crop.isRotten()) {
+            crop.restore();
+        }
     }
 }
+

@@ -1,16 +1,13 @@
 package de.tum.cit.aet.valleyday.tiles;
 
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import de.tum.cit.aet.valleyday.texture.Drawable;
 
-/**
- * A single tile on the map grid.
- */
 public abstract class Tile implements Drawable {
+    protected final int x;
+    protected final int y;
 
-    protected final float x;
-    protected final float y;
-
-    protected Tile(float x, float y) {
+    public Tile(int x, int y) {
         this.x = x;
         this.y = y;
     }
@@ -23,5 +20,19 @@ public abstract class Tile implements Drawable {
     @Override
     public float getY() {
         return y;
+    }
+
+    public abstract TextureRegion getCurrentAppearance();
+
+    public void tick(float frameTime) {
+        // Override in subclasses if needed
+    }
+
+    public boolean isWalkable() {
+        return true;
+    }
+
+    public boolean isDestructible() {
+        return false;
     }
 }
