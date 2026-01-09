@@ -20,3 +20,17 @@ rad.json
 *.flf
 #Test results file
 TestResults.xml
+
+### Java / Gradle ###
+.gradle/
+**/build/
+build/
+out/
+
+### IDE ###
+.idea/
+*.iml
+.vscode/
+
+### Misc ###
+crash.log
