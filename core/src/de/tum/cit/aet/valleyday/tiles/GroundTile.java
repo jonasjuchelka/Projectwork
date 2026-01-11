@@ -13,7 +13,7 @@ public class GroundTile extends Tile {
 
     @Override
     public TextureRegion getCurrentAppearance() {
-        return Textures.SOIL_EMPTY;
+        return Textures.GROUND;
     }
 
     @Override

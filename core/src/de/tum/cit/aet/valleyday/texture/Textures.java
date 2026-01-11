@@ -29,9 +29,11 @@ public class Textures {
     public static TextureRegion CHEST;
     public static TextureRegion FLOWERS;
 
+    public static TextureRegion GROUND;
+
     private static Texture placeholderTexture;
 
-    private static TextureRegion GROUND;
+
 
     public static void initialize() {
         Gdx.app.log("Textures", "Initializing textures...");
@@ -85,7 +87,7 @@ public class Textures {
         Gdx.app.log("Textures", "Textures initialized successfully!");
 
 
-        GROUND = SpriteSheet.BASIC_TILES_EXTENDED.at(2, 5);
+        GROUND = SpriteSheet.BASIC_TILES_EXTENDED.at(2, 5);  
     }
 
 

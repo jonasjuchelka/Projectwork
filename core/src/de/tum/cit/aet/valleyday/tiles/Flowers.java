@@ -1,7 +1,6 @@
 package de.tum.cit.aet.valleyday.tiles;
 
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import de.tum.cit.aet.valleyday.texture.Drawable;
 import de.tum.cit.aet.valleyday.texture.Textures;
 
 /**
@@ -9,14 +8,10 @@ import de.tum.cit.aet.valleyday.texture.Textures;
  * They do not have a hitbox, so the player does not collide with them.
  * They are purely decorative and serve as a nice floor decoration.
  */
-public class Flowers implements Drawable {
-
-    private final int x;
-    private final int y;
+public class Flowers extends Tile {  // ← FIXED: Removed "implements Drawable", now properly extends Tile
 
     public Flowers(int x, int y) {
-        this.x = x;
-        this.y = y;
+        super(x, y);  // ← FIXED: Call super constructor from Tile
     }
 
     @Override
@@ -25,12 +20,7 @@ public class Flowers implements Drawable {
     }
 
     @Override
-    public float getX() {
-        return x;
-    }
-
-    @Override
-    public float getY() {
-        return y;
+    public boolean isWalkable() {
+        return true;  // Player can walk over flowers (no collision)
     }
 }

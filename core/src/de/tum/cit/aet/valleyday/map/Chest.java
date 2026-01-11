@@ -13,6 +13,8 @@ public class Chest implements Drawable {
     // We would normally get the position from the hitbox, but since we don't need to move the chest, we can store the position directly.
     private final float x;
     private final float y;
+
+   
     
     /**
      * Create a chest at the given position.
