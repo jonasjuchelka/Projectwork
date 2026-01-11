@@ -10,11 +10,16 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
  */
 public enum SpriteSheet {
 
+
+
     /** The character spritesheet, which has a grid size of 16x32. */
     CHARACTER("character.png", 16, 32),
 
     /** The basic tiles spritesheet, which has a grid size of 16x16. */
     BASIC_TILES("basics.png", 16, 16),
+
+    /** The basic tiles spritesheet, which has a grid size of 16x16. */
+    CROPS("crops.png", 16, 16),
 
     /** The extended basic tiles spritesheet for ground tiles, which has a grid size of 16x16. */
     BASIC_TILES_EXTENDED("basictiles.png", 16, 16),
@@ -26,7 +31,12 @@ public enum SpriteSheet {
     FENCE("Fance_Gate.png", 48, 24),
 
     /** The objects/decorations spritesheet, which has a grid size of 16x16. */
-    OBJECTS("objects.png", 16, 16);
+    OBJECTS("objects.png", 16, 16),
+
+    /** The harvest spritesheet, which has a grid size of 16x16. */
+    HARVEST("Harvest.png", 16, 16),
+
+    SNAIL("snail.png", 48, 48);
 
     private final Texture spritesheet;
     private final int width;
@@ -50,4 +60,21 @@ public enum SpriteSheet {
                 this.height
         );
     }
+
+
+    public TextureRegion atVertical(int startRow, int column, int numRows) {
+        return new TextureRegion(
+            spritesheet,
+            (column - 1) * this.width,
+            (startRow - 1) * this.height,
+            this.width,
+            this.height * numRows
+        );
+    }
+
+
+
+
+
+
 }

@@ -31,6 +31,8 @@ public class Textures {
 
     private static Texture placeholderTexture;
 
+    private static TextureRegion GROUND;
+
     public static void initialize() {
         Gdx.app.log("Textures", "Initializing textures...");
 
@@ -61,28 +63,29 @@ public class Textures {
         TextureRegion wildlifeRegion = new TextureRegion(wildlifeTexture);
 
         // Assign textures
-        FENCE = placeholder;
-        DEBRIS = placeholder;
-        SOIL_EMPTY = placeholder;
-        ENTRANCE = placeholder;
-        EXIT = placeholder;
-        CROP_SEED = placeholder;
-        CROP_SPROUT = placeholder;
-        CROP_MATURE = placeholder;
-        CROP_ROTTEN = placeholder;
-        SHOVEL = placeholder;
-        FERTILIZER = placeholder;
-        WATERING_CAN = placeholder;
+        FENCE = SpriteSheet.FENCE.at(1,1);
+        DEBRIS = SpriteSheet.BASIC_TILES_EXTENDED.at(8,3);
+        SOIL_EMPTY = SpriteSheet.CROPS.at(5, 1);
+        ENTRANCE = SpriteSheet.BASIC_TILES_EXTENDED.at(7, 1);
+        EXIT = SpriteSheet.BASIC_TILES_EXTENDED.at(7, 3);
+        CROP_SEED = SpriteSheet.CROPS.at(1, 5);
+        CROP_SPROUT = SpriteSheet.CROPS.at(2, 5);;
+        CROP_MATURE = SpriteSheet.CROPS.at(4, 5);;
+        CROP_ROTTEN = SpriteSheet.CROPS.at(10, 18);;
+        SHOVEL = SpriteSheet.BASIC_TILES.atVertical(2, 7, 3);
+        FERTILIZER = SpriteSheet.OBJECTS.at(1, 14);
+        WATERING_CAN = SpriteSheet.HARVEST.at(1,7);
 
-        SNAIL = wildlifeRegion;
-        RAT = wildlifeRegion;
-        CROW = wildlifeRegion;
+        SNAIL = SpriteSheet.SNAIL.at(1,3);
+        RAT = SpriteSheet.CREATURES.at(10, 3);
+        CROW = SpriteSheet.CREATURES.at(14, 7);
 
         PLAYER = playerRegion;  // RED player!
-        CHEST = placeholder;
-        FLOWERS = placeholder;
-
+        CHEST = SpriteSheet.OBJECTS.at(1, 1);
         Gdx.app.log("Textures", "Textures initialized successfully!");
+
+
+        GROUND = SpriteSheet.BASIC_TILES_EXTENDED.at(2, 5);
     }
 
 
