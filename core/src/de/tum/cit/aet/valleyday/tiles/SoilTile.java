@@ -12,10 +12,12 @@ public class SoilTile extends Tile {
 
     @Override
     public TextureRegion getCurrentAppearance() {
+        // Only render the crop if present
+        // The ground layer handles the soil texture
         if (crop != null) {
             return crop.getCurrentAppearance();
         }
-        return Textures.SOIL_EMPTY;
+        return null;  // Transparent when no crop
     }
 
     @Override

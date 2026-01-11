@@ -36,7 +36,7 @@ public class MenuScreen implements Screen {
         batch.end();
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
-            game.startGame("maps/map-1.properties");  // CHANGED: removed "assets/"
+            game.startGame("maps/map-test-fence.properties");  // Test map with fence border
         }
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {

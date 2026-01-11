@@ -28,16 +28,26 @@ public class GameMap {
     private final World world;
     private final Player player;
     private final Tile[][] tiles;
+    private final GroundTile[][] groundLayer;
     private final List<GameObject> gameObjects;
     private final List<WildlifeVisitor> wildlifeVisitors;
 
     public GameMap(ValleyDayGame game) {
         this.game = game;
         this.world = new World(Vector2.Zero, true);
-        this.player = new Player(this.world, 1, 3);
+        // Start player in center of map (10.5, 10.5)
+        this.player = new Player(this.world, 10.5f, 10.5f);
         this.tiles = new Tile[MAP_WIDTH][MAP_HEIGHT];
+        this.groundLayer = new GroundTile[MAP_WIDTH][MAP_HEIGHT];
         this.gameObjects = new ArrayList<>();
         this.wildlifeVisitors = new ArrayList<>();
+
+        // Initialize ground layer for all positions
+        for (int x = 0; x < MAP_WIDTH; x++) {
+            for (int y = 0; y < MAP_HEIGHT; y++) {
+                groundLayer[x][y] = new GroundTile(x, y, MAP_WIDTH, MAP_HEIGHT);
+            }
+        }
 
         for (int x = 0; x < MAP_WIDTH; x++) {
             for (int y = 0; y < MAP_HEIGHT; y++) {
@@ -179,6 +189,10 @@ public class GameMap {
 
     public Tile[][] getTiles() {
         return tiles;
+    }
+
+    public GroundTile[][] getGroundLayer() {
+        return groundLayer;
     }
 
     public Tile getTile(int x, int y) {

@@ -16,11 +16,14 @@ public enum SpriteSheet {
     /** The basic tiles spritesheet, which has a grid size of 16x16. */
     BASIC_TILES("basics.png", 16, 16),
 
+    /** The extended basic tiles spritesheet for ground tiles, which has a grid size of 16x16. */
+    BASIC_TILES_EXTENDED("basictiles.png", 16, 16),
+
     /** The NPC / creatures spritesheet, which has a grid size of 16x16. */
     CREATURES("npc.png", 16, 16),
 
-    /** The fence/gate spritesheet, which has a grid size of 16x16. */
-    FENCE("Fance_Gate.png", 16, 16),
+    /** The fence/gate spritesheet, which has 4 sprites of size 48x24 in a horizontal row. */
+    FENCE("Fance_Gate.png", 48, 24),
 
     /** The objects/decorations spritesheet, which has a grid size of 16x16. */
     OBJECTS("objects.png", 16, 16);
