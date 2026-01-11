@@ -31,7 +31,7 @@ public class GameScreen implements Screen {
 
         // Camera setup
         this.camera = new OrthographicCamera();
-        this.camera.setToOrtho(false, 30, 30);
+        this.camera.setToOrtho(false, 21, 21);
         // Camera will be centered on player in updateCamera()
         this.camera.update();
 
@@ -254,7 +254,7 @@ public class GameScreen implements Screen {
     @Override
     public void resize(int width, int height) {
         float aspectRatio = (float) width / (float) height;
-        camera.setToOrtho(false, 30 * aspectRatio, 30);  // Better scaling
+        camera.setToOrtho(false, 21 * aspectRatio, 21);  // Better scaling
         camera.update();
     }
 

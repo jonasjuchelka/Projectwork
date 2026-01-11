@@ -3,19 +3,37 @@ package de.tum.cit.aet.valleyday.map;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.files.FileHandle;
+import com.badlogic.gdx.maps.tiled.TiledMap;
+import com.badlogic.gdx.maps.tiled.TiledMapTileLayer;
+import com.badlogic.gdx.maps.tiled.TmxMapLoader;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.*;
 import de.tum.cit.aet.valleyday.ValleyDayGame;
 import de.tum.cit.aet.valleyday.texture.Textures;
 import de.tum.cit.aet.valleyday.tiles.*;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
 public class GameMap {
+
     static {
         Box2D.init();
+    }
+
+    public void loadTmxMap(String tmxPath) {
+        TiledMap tiledMap = new TmxMapLoader().load(tmxPath);
+        TiledMapTileLayer layer = (TiledMapTileLayer) tiledMap.getLayers().get(0);
+
+        for (int x = 0; x < layer.getWidth(); x++) {
+            for (int y = 0; y < layer.getHeight(); y++) {
+                TiledMapTileLayer.Cell cell = layer.getCell(x, y);
+                if (cell != null) {
+                    int tileId = cell.getTile().getId();
+                    tiles[x][y] = createTile(x, y, tileId);
+                }
+            }
+        }
     }
 
     private static final float TIME_STEP = 1f / 60f;
@@ -23,6 +41,15 @@ public class GameMap {
     private static final int POSITION_ITERATIONS = 2;
     private static final int MAP_WIDTH = 21;
     private static final int MAP_HEIGHT = 21;
+
+    // ========== AVAILABLE MAP FILES ==========
+    private static final String[] MAP_FILES = {
+            "maps/map-1.properties",
+            "maps/map-2.properties",
+            "maps/map-3.properties",
+            "maps/map-4.properties",
+            "maps/map-5.properties"
+    };
 
     private float physicsTime = 0;
     private final ValleyDayGame game;
@@ -52,22 +79,39 @@ public class GameMap {
             }
         }
 
-        // Optional base init (wird gleich überschrieben)
+        // Initialize tiles with SoilTile
         for (int x = 0; x < MAP_WIDTH; x++) {
             for (int y = 0; y < MAP_HEIGHT; y++) {
                 tiles[x][y] = new SoilTile(x, y);
             }
         }
 
-        // Prozedurale Karte erzeugen
-        generateProceduralMap();
+        // ========== LOAD RANDOM MAP ==========
+        loadRandomMap();
     }
 
-    // ----------------- Laden aus Properties (für später nutzbar) -----------------
+    // ========== RANDOM MAP SELECTION ==========
+    private void loadRandomMap() {
+        Random rand = new Random();
+        int mapIndex = rand.nextInt(MAP_FILES.length);
+        String selectedMap = MAP_FILES[mapIndex];
 
+        Gdx.app.log("MapLoader", "Selected random map: " + selectedMap);
+
+        FileHandle file = Gdx.files.internal(selectedMap);
+
+        if (file.exists()) {
+            loadFromProperties(file);
+        } else {
+            Gdx.app.error("MapLoader", "Map file not found: " + selectedMap);
+            Gdx.app.log("MapLoader", "Falling back to empty map");
+        }
+    }
+
+    // ========== LOAD MAP FROM PROPERTIES FILE ==========
     public void loadFromProperties(FileHandle file) {
         if (file == null || !file.exists()) {
-            Gdx.app.log("MapLoad", "File not found: " + file);
+            Gdx.app.error("MapLoad", "File not found: " + file);
             return;
         }
 
@@ -123,8 +167,7 @@ public class GameMap {
         };
     }
 
-    // ----------------- Physische Wände für Zäune -----------------
-
+    // ========== WALL BODIES ==========
     private void createWallBodies() {
         for (int x = 0; x < MAP_WIDTH; x++) {
             for (int y = 0; y < MAP_HEIGHT; y++) {
@@ -141,19 +184,17 @@ public class GameMap {
         bodyDef.type = BodyDef.BodyType.StaticBody;
         bodyDef.position.set(x + 0.5f, y + 0.5f);
         Body body = world.createBody(bodyDef);
-
         PolygonShape shape = new PolygonShape();
         shape.setAsBox(0.5f, 0.5f);
         body.createFixture(shape, 1.0f);
         shape.dispose();
     }
 
-    // ----------------- Deko‑Objekte und Wildlife -----------------
-
+    // ========== GAME OBJECTS & WILDLIFE ==========
     private void spawnGameObjects() {
         gameObjects.clear();
         Random rand = new Random();
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < 5; i++) {
             int x = 5 + rand.nextInt(10);
             int y = 5 + rand.nextInt(10);
             gameObjects.add(new GameObject(x, y, Textures.getRandomObject()));
@@ -172,8 +213,7 @@ public class GameMap {
         }
     }
 
-    // ----------------- Game‑Loop‑Tick -----------------
-
+    // ========== GAME TICK ==========
     public void tick(float frameTime) {
         this.player.tick(frameTime);
         handlePlayerInteraction();
@@ -191,8 +231,7 @@ public class GameMap {
         doPhysicsStep(frameTime);
     }
 
-    // ----------------- Spieler‑Interaktion -----------------
-
+    // ========== PLAYER INTERACTION ==========
     private void handlePlayerInteraction() {
         int px = player.getTileX();
         int py = player.getTileY();
@@ -263,8 +302,7 @@ public class GameMap {
         }
     }
 
-    // ----------------- Physikstep -----------------
-
+    // ========== PHYSICS ==========
     private void doPhysicsStep(float frameTime) {
         this.physicsTime += frameTime;
         while (this.physicsTime >= TIME_STEP) {
@@ -273,8 +311,7 @@ public class GameMap {
         }
     }
 
-    // ----------------- Getter -----------------
-
+    // ========== GETTERS ==========
     public Player getPlayer() {
         return player;
     }
@@ -312,129 +349,5 @@ public class GameMap {
 
     public World getWorld() {
         return world;
-    }
-
-    // ----------------- Prozedurale Map‑Generierung -----------------
-
-    // ========== PROCEDURAL MAP GENERATION ==========
-
-private void generateProceduralMap() {
-Random rand = new Random();
-
-Gdx.app.log("MapGen", "Generating procedural map...");
-
-// Step 1: Fill entire map with SoilTile
-for (int x = 0; x < MAP_WIDTH; x++) {
-    for (int y = 0; y < MAP_HEIGHT; y++) {
-        tiles[x][y] = new SoilTile(x, y);
-    }
-}
-
-// Step 2: Create fence borders
-for (int x = 0; x < MAP_WIDTH; x++) {
-    tiles[x][0] = new Fence(x, 0);  // Bottom border
-    tiles[x][MAP_HEIGHT - 1] = new Fence(x, MAP_HEIGHT - 1);  // Top border
-}
-for (int y = 0; y < MAP_HEIGHT; y++) {
-    tiles[0][y] = new Fence(0, y);  // Left border
-    tiles[MAP_WIDTH - 1][y] = new Fence(MAP_WIDTH - 1, y);  // Right border
-}
-
-// Step 3: Create entrance at bottom center
-int entranceX = MAP_WIDTH / 2;
-tiles[entranceX][0] = new Entrance(entranceX, 0);
-
-// Step 4: Create exit at top center
-int exitX = MAP_WIDTH / 2;
-tiles[exitX][MAP_HEIGHT - 1] = new Exit(exitX, MAP_HEIGHT - 1);
-
-// Step 5: GUARANTEED TOOLS - Place all 3 tools
-List<ToolItem.ItemType> tools = new ArrayList<>();
-tools.add(ToolItem.ItemType.SHOVEL);
-tools.add(ToolItem.ItemType.WATERING_CAN);
-tools.add(ToolItem.ItemType.FERTILIZER);
-
-for (ToolItem.ItemType tool : tools) {
-    boolean placed = false;
-    int attempts = 0;
-    while (!placed && attempts < 100) {
-        int x = 3 + rand.nextInt(MAP_WIDTH - 6);
-        int y = 3 + rand.nextInt(MAP_HEIGHT - 6);
-        if (tiles[x][y] instanceof SoilTile) {
-            tiles[x][y] = new ToolItem(x, y, tool);
-            Gdx.app.log("MapGen", "✓ Placed " + tool + " at (" + x + ", " + y + ")");
-            placed = true;
-        }
-        attempts++;
-    }
-    if (!placed) {
-        Gdx.app.error("MapGen", "Failed to place " + tool);
-    }
-}
-
-// Step 6: GUARANTEED CHEST (goes in gameObjects, not tiles)
-boolean chestPlaced = false;
-int attempts = 0;
-while (!chestPlaced && attempts < 100) {
-    int x = 3 + rand.nextInt(MAP_WIDTH - 6);
-    int y = 3 + rand.nextInt(MAP_HEIGHT - 6);
-    if (tiles[x][y] instanceof SoilTile) {
-        // TODO: Chest is not a GameObject, needs separate handling
-        // gameObjects.add(new Chest(world, x + 0.5f, y + 0.5f));
-        Gdx.app.log("MapGen", "✓ Chest placement skipped (not GameObject)");
-        chestPlaced = true;
-    }
-    attempts++;
-}
-
-// Step 7: Scatter debris randomly (15-25 pieces)
-int debrisCount = 15 + rand.nextInt(11);
-int debrisPlaced = 0;
-attempts = 0;
-while (debrisPlaced < debrisCount && attempts < 200) {
-    int x = 2 + rand.nextInt(MAP_WIDTH - 4);
-    int y = 2 + rand.nextInt(MAP_HEIGHT - 4);
-    if (tiles[x][y] instanceof SoilTile) {
-        tiles[x][y] = new Debris(x, y, new SoilTile(x, y));
-        debrisPlaced++;
-    }
-    attempts++;
-}
-Gdx.app.log("MapGen", "✓ Placed " + debrisPlaced + " debris pieces");
-
-// Step 8: Add decorative flowers (8-12)
-int flowerCount = 8 + rand.nextInt(5);
-int flowersPlaced = 0;
-attempts = 0;
-while (flowersPlaced < flowerCount && attempts < 200) {
-    int x = 2 + rand.nextInt(MAP_WIDTH - 4);
-    int y = 2 + rand.nextInt(MAP_HEIGHT - 4);
-    if (tiles[x][y] instanceof SoilTile) {
-        tiles[x][y] = new Flowers(x, y);
-        flowersPlaced++;
-    }
-    attempts++;
-}
-Gdx.app.log("MapGen", "✓ Placed " + flowersPlaced + " flowers");
-
-// Finalize map
-createWallBodies();
-spawnWildlife();  // Don't call spawnGameObjects() since we already added chest manually
-
-Gdx.app.log("MapGen", "✅ Procedural map generated successfully!");
-}
-
-
-    private void placeToolRandomly(ToolItem.ItemType toolType, Random rand) {
-        int attempts = 0;
-        while (attempts < 50) {
-            int x = 2 + rand.nextInt(MAP_WIDTH - 4);
-            int y = 2 + rand.nextInt(MAP_HEIGHT - 4);
-            if (tiles[x][y] instanceof SoilTile) {
-                tiles[x][y] = new ToolItem(x, y, toolType);
-                return;
-            }
-            attempts++;
-        }
     }
 }
