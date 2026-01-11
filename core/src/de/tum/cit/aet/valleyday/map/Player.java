@@ -2,6 +2,7 @@ package de.tum.cit.aet.valleyday.map;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
+import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.physics.box2d.BodyDef;
@@ -65,7 +66,27 @@ public class Player implements Drawable {
 
     @Override
     public TextureRegion getCurrentAppearance() {
-        return Animations.CHARACTER_WALK_DOWN.getKeyFrame(this.elapsedTime, true);
+        Animation<TextureRegion> currentAnimation;
+
+        switch (currentDirection) {
+            case UP:
+                currentAnimation = Animations.CHARACTER_WALK_UP;
+                break;
+            case DOWN:
+                currentAnimation = Animations.CHARACTER_WALK_DOWN;
+                break;
+            case LEFT:
+                currentAnimation = Animations.CHARACTER_WALK_LEFT;
+                break;
+            case RIGHT:
+                currentAnimation = Animations.CHARACTER_WALK_RIGHT;
+                break;
+            default:
+                currentAnimation = Animations.CHARACTER_WALK_DOWN;
+                break;
+        }
+
+        return currentAnimation.getKeyFrame(this.elapsedTime, true);
     }
 
     @Override
