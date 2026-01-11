@@ -44,6 +44,7 @@ public class WildlifeVisitor implements Drawable {
     public void tick(float frameTime) {
         moveTimer -= frameTime;
 
+
         if (moveTimer <= 0) {
             moveDirection = random.nextFloat() * 360;
             moveTimer = 1.0f + random.nextFloat() * 2.0f;

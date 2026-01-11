@@ -10,6 +10,10 @@ import com.badlogic.gdx.physics.box2d.CircleShape;
 import com.badlogic.gdx.physics.box2d.World;
 import de.tum.cit.aet.valleyday.texture.Animations;
 import de.tum.cit.aet.valleyday.texture.Drawable;
+import de.tum.cit.aet.valleyday.tiles.ToolItem;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class Player implements Drawable {
     private float elapsedTime;
@@ -17,12 +21,20 @@ public class Player implements Drawable {
     private static final float MOVEMENT_SPEED = 5.0f;
     private Direction currentDirection = Direction.DOWN;
 
+    // INVENTORY SYSTEM - ADDED BACK
+    private final List<ToolItem.ItemType> inventory;
+    private ToolItem.ItemType currentTool;
+    private int coins;
+
     private enum Direction {
         UP, DOWN, LEFT, RIGHT
     }
 
     public Player(World world, float x, float y) {
         this.hitbox = createHitbox(world, x, y);
+        this.inventory = new ArrayList<>();
+        this.currentTool = null;
+        this.coins = 0;
     }
 
     private Body createHitbox(World world, float startX, float startY) {
@@ -62,12 +74,61 @@ public class Player implements Drawable {
         }
 
         this.hitbox.setLinearVelocity(xVelocity, yVelocity);
+        handleToolSwitch();
+    }
+
+    private void handleToolSwitch() {
+        if (inventory.isEmpty()) return;
+
+        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_1) && inventory.size() > 0) {
+            currentTool = inventory.get(0);
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_2) && inventory.size() > 1) {
+            currentTool = inventory.get(1);
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_3) && inventory.size() > 2) {
+            currentTool = inventory.get(2);
+        }
+    }
+
+    // INVENTORY METHODS - ADDED BACK
+    public void addItem(ToolItem.ItemType item) {
+        if (!inventory.contains(item)) {
+            inventory.add(item);
+            if (currentTool == null) {
+                currentTool = item;
+            }
+            Gdx.app.log("Player", "Picked up: " + item);
+        }
+    }
+
+    public void addCoins(int amount) {
+        this.coins += amount;
+    }
+
+    public boolean hasTool(ToolItem.ItemType tool) {
+        return inventory.contains(tool);
+    }
+
+    public ToolItem.ItemType getCurrentTool() {
+        return currentTool;
+    }
+
+    public List<ToolItem.ItemType> getInventory() {
+        return inventory;
+    }
+
+    public int getCoins() {
+        return coins;
+    }
+
+    public void setPosition(float x, float y) {
+        hitbox.setTransform(x, y, 0);
     }
 
     @Override
     public TextureRegion getCurrentAppearance() {
         Animation<TextureRegion> currentAnimation;
-
         switch (currentDirection) {
             case UP:
                 currentAnimation = Animations.CHARACTER_WALK_UP;
@@ -85,7 +146,6 @@ public class Player implements Drawable {
                 currentAnimation = Animations.CHARACTER_WALK_DOWN;
                 break;
         }
-
         return currentAnimation.getKeyFrame(this.elapsedTime, true);
     }
 

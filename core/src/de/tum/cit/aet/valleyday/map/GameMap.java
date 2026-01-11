@@ -1,6 +1,7 @@
 package de.tum.cit.aet.valleyday.map;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.*;
@@ -35,8 +36,10 @@ public class GameMap {
     public GameMap(ValleyDayGame game) {
         this.game = game;
         this.world = new World(Vector2.Zero, true);
+
         // Start player in center of map (10.5, 10.5)
         this.player = new Player(this.world, 10.5f, 10.5f);
+
         this.tiles = new Tile[MAP_WIDTH][MAP_HEIGHT];
         this.groundLayer = new GroundTile[MAP_WIDTH][MAP_HEIGHT];
         this.gameObjects = new ArrayList<>();
@@ -49,6 +52,7 @@ public class GameMap {
             }
         }
 
+        // Initialize tiles with default SoilTile
         for (int x = 0; x < MAP_WIDTH; x++) {
             for (int y = 0; y < MAP_HEIGHT; y++) {
                 tiles[x][y] = new SoilTile(x, y);
@@ -62,6 +66,7 @@ public class GameMap {
             return;
         }
 
+        // Reset tiles to SoilTile
         for (int x = 0; x < MAP_WIDTH; x++) {
             for (int y = 0; y < MAP_HEIGHT; y++) {
                 tiles[x][y] = new SoilTile(x, y);
@@ -128,8 +133,8 @@ public class GameMap {
         BodyDef bodyDef = new BodyDef();
         bodyDef.type = BodyDef.BodyType.StaticBody;
         bodyDef.position.set(x + 0.5f, y + 0.5f);
-
         Body body = world.createBody(bodyDef);
+
         PolygonShape shape = new PolygonShape();
         shape.setAsBox(0.5f, 0.5f);
         body.createFixture(shape, 1.0f);
@@ -139,7 +144,6 @@ public class GameMap {
     private void spawnGameObjects() {
         gameObjects.clear();
         Random rand = new Random();
-
         for (int i = 0; i < 8; i++) {
             int x = 5 + rand.nextInt(10);
             int y = 5 + rand.nextInt(10);
@@ -150,7 +154,6 @@ public class GameMap {
     private void spawnWildlife() {
         wildlifeVisitors.clear();
         Random rand = new Random();
-
         for (int i = 0; i < 3; i++) {
             int x = 3 + rand.nextInt(15);
             int y = 3 + rand.nextInt(15);
@@ -161,6 +164,7 @@ public class GameMap {
 
     public void tick(float frameTime) {
         this.player.tick(frameTime);
+        handlePlayerInteraction(); // Player interactions with tiles
 
         for (WildlifeVisitor visitor : wildlifeVisitors) {
             visitor.tick(frameTime);
@@ -175,6 +179,84 @@ public class GameMap {
         doPhysicsStep(frameTime);
     }
 
+    // PLAYER INTERACTION LOGIC
+    private void handlePlayerInteraction() {
+        int px = player.getTileX();
+        int py = player.getTileY();
+
+        // Pick up tools when standing on them
+        Tile currentTile = getTile(px, py);
+        if (currentTile instanceof ToolItem) {
+            ToolItem toolItem = (ToolItem) currentTile;
+            player.addItem(toolItem.getItemType());
+            tiles[px][py] = new SoilTile(px, py);
+            Gdx.app.log("GameMap", "Picked up tool: " + toolItem.getItemType());
+        }
+
+        // Use tool on SPACE key
+        if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
+            useTool(px, py);
+        }
+    }
+
+    // TOOL USAGE LOGIC
+    private void useTool(int x, int y) {
+        Tile tile = getTile(x, y);
+        ToolItem.ItemType tool = player.getCurrentTool();
+
+        if (tool == null) {
+            Gdx.app.log("GameMap", "No tool equipped!");
+            return;
+        }
+
+        switch (tool) {
+            case SHOVEL:
+                // Clear debris
+                if (tile instanceof Debris) {
+                    Debris debris = (Debris) tile;
+                    tiles[x][y] = debris.getHiddenTile();
+                    Gdx.app.log("GameMap", "Cleared debris!");
+                }
+                // Plant seeds on empty soil
+                else if (tile instanceof SoilTile) {
+                    SoilTile soil = (SoilTile) tile;
+                    if (!soil.hasCrop()) {
+                        soil.plantSeed();
+                        Gdx.app.log("GameMap", "Planted seed!");
+                    } else if (soil.getCrop() != null && soil.getCrop().isMature()) {
+                        // Harvest mature crops
+                        int coins = 10;
+                        player.addCoins(coins);
+                        soil.harvestCrop();
+                        Gdx.app.log("GameMap", "Harvested crop! Earned " + coins + " coins");
+                    }
+                }
+                break;
+
+            case WATERING_CAN:
+                // Water crops
+                if (tile instanceof SoilTile) {
+                    SoilTile soil = (SoilTile) tile;
+                    if (soil.hasCrop()) {
+                        soil.applyWateringCan();
+                        Gdx.app.log("GameMap", "Watered crop!");
+                    }
+                }
+                break;
+
+            case FERTILIZER:
+                // Fertilize crops
+                if (tile instanceof SoilTile) {
+                    SoilTile soil = (SoilTile) tile;
+                    if (soil.hasCrop()) {
+                        soil.applyFertilizer();
+                        Gdx.app.log("GameMap", "Fertilized crop!");
+                    }
+                }
+                break;
+        }
+    }
+
     private void doPhysicsStep(float frameTime) {
         this.physicsTime += frameTime;
         while (this.physicsTime >= TIME_STEP) {
@@ -183,6 +265,7 @@ public class GameMap {
         }
     }
 
+    // GETTERS
     public Player getPlayer() {
         return player;
     }
