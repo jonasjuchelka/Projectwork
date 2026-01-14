@@ -20,8 +20,8 @@ public class ValleyDayGame extends Game {
     public void create() {
         Gdx.app.log("ValleyDay", "Creating game...");
         this.batch = new SpriteBatch();
-        Textures.initialize();  // First
-        Animations.initialize(); // Then animations (uses Textures.PLAYER)
+        Textures.initialize();
+        Animations.initialize();
         setScreen(new MenuScreen(this));
     }
 
@@ -42,8 +42,9 @@ public class ValleyDayGame extends Game {
         return batch;
     }
 
-    public void startGame(String mapFilePath) {
-        setScreen(new GameScreen(this, mapFilePath));
+    // ========== REMOVED MAP PATH PARAMETER ==========
+    public void startGame() {
+        setScreen(new GameScreen(this));  // ← No parameter needed!
     }
 
     public void returnToMenu() {

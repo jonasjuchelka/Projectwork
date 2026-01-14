@@ -3,52 +3,35 @@ package de.tum.cit.aet.valleyday.map;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.files.FileHandle;
+import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.maps.tiled.TiledMap;
-import com.badlogic.gdx.maps.tiled.TiledMapTileLayer;
 import com.badlogic.gdx.maps.tiled.TmxMapLoader;
+import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.*;
 import de.tum.cit.aet.valleyday.ValleyDayGame;
 import de.tum.cit.aet.valleyday.texture.Textures;
 import de.tum.cit.aet.valleyday.tiles.*;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
 public class GameMap {
-
     static {
         Box2D.init();
-    }
-
-    public void loadTmxMap(String tmxPath) {
-        TiledMap tiledMap = new TmxMapLoader().load(tmxPath);
-        TiledMapTileLayer layer = (TiledMapTileLayer) tiledMap.getLayers().get(0);
-
-        for (int x = 0; x < layer.getWidth(); x++) {
-            for (int y = 0; y < layer.getHeight(); y++) {
-                TiledMapTileLayer.Cell cell = layer.getCell(x, y);
-                if (cell != null) {
-                    int tileId = cell.getTile().getId();
-                    tiles[x][y] = createTile(x, y, tileId);
-                }
-            }
-        }
     }
 
     private static final float TIME_STEP = 1f / 60f;
     private static final int VELOCITY_ITERATIONS = 6;
     private static final int POSITION_ITERATIONS = 2;
-    private static final int MAP_WIDTH = 21;
-    private static final int MAP_HEIGHT = 21;
+    private static final int MAP_WIDTH = 32;
+    private static final int MAP_HEIGHT = 32;
 
-    // ========== AVAILABLE MAP FILES ==========
-    private static final String[] MAP_FILES = {
-            "maps/map-1.properties",
-            "maps/map-2.properties",
-            "maps/map-3.properties",
-            "maps/map-4.properties",
-            "maps/map-5.properties"
+    // TMX maps only
+    private static final String[] TMX_MAPS = {
+            "maps/map-1.tmx"
+            // Add more later: "maps/map-2.tmx", etc.
     };
 
     private float physicsTime = 0;
@@ -60,19 +43,21 @@ public class GameMap {
     private final List<GameObject> gameObjects;
     private final List<WildlifeVisitor> wildlifeVisitors;
 
+    // TMX rendering
+    private TiledMap tiledMap;
+    private OrthogonalTiledMapRenderer tiledMapRenderer;
+    private final float UNIT_SCALE = 1f / 16f;
+
     public GameMap(ValleyDayGame game) {
         this.game = game;
         this.world = new World(Vector2.Zero, true);
-
-        // Start player in center of map (10.5, 10.5)
-        this.player = new Player(this.world, 10.5f, 10.5f);
-
+        this.player = new Player(this.world, 16f, 16f);
         this.tiles = new Tile[MAP_WIDTH][MAP_HEIGHT];
         this.groundLayer = new GroundTile[MAP_WIDTH][MAP_HEIGHT];
         this.gameObjects = new ArrayList<>();
         this.wildlifeVisitors = new ArrayList<>();
 
-        // Initialize ground layer for all positions
+        // Initialize ground layer
         for (int x = 0; x < MAP_WIDTH; x++) {
             for (int y = 0; y < MAP_HEIGHT; y++) {
                 groundLayer[x][y] = new GroundTile(x, y, MAP_WIDTH, MAP_HEIGHT);
@@ -86,88 +71,54 @@ public class GameMap {
             }
         }
 
-        // ========== LOAD RANDOM MAP ==========
+        // Load TMX map
         loadRandomMap();
     }
 
-    // ========== RANDOM MAP SELECTION ==========
     private void loadRandomMap() {
-        Random rand = new Random();
-        int mapIndex = rand.nextInt(MAP_FILES.length);
-        String selectedMap = MAP_FILES[mapIndex];
+        int mapIndex = 0;  // Always load map-1 for now (change to random later)
+        String tmxPath = TMX_MAPS[mapIndex];
 
-        Gdx.app.log("MapLoader", "Selected random map: " + selectedMap);
+        Gdx.app.log("MapLoader", "Loading TMX map: " + tmxPath);
 
-        FileHandle file = Gdx.files.internal(selectedMap);
+        // Load the TMX map
+        loadTmxMap(tmxPath);
 
-        if (file.exists()) {
-            loadFromProperties(file);
-        } else {
-            Gdx.app.error("MapLoader", "Map file not found: " + selectedMap);
-            Gdx.app.log("MapLoader", "Falling back to empty map");
-        }
-    }
-
-    // ========== LOAD MAP FROM PROPERTIES FILE ==========
-    public void loadFromProperties(FileHandle file) {
-        if (file == null || !file.exists()) {
-            Gdx.app.error("MapLoad", "File not found: " + file);
-            return;
-        }
-
-        // Reset tiles to SoilTile
-        for (int x = 0; x < MAP_WIDTH; x++) {
-            for (int y = 0; y < MAP_HEIGHT; y++) {
-                tiles[x][y] = new SoilTile(x, y);
-            }
-        }
-
-        String content = file.readString();
-        String[] lines = content.split("\\r?\\n");
-
-        for (String line : lines) {
-            line = line.trim();
-            if (line.isEmpty() || line.startsWith("#")) continue;
-
-            String[] parts = line.split("=");
-            if (parts.length != 2) continue;
-
-            String[] coords = parts[0].split(",");
-            if (coords.length != 2) continue;
-
-            try {
-                int x = Integer.parseInt(coords[0].trim());
-                int y = Integer.parseInt(coords[1].trim());
-                int type = Integer.parseInt(parts[1].trim());
-
-                if (x >= 0 && x < MAP_WIDTH && y >= 0 && y < MAP_HEIGHT) {
-                    tiles[x][y] = createTile(x, y, type);
-                }
-            } catch (NumberFormatException e) {
-                // skip invalid lines
-            }
-        }
-
+        // Create walls from fence tiles (if needed)
         createWallBodies();
+
+        // Spawn objects and wildlife
         spawnGameObjects();
         spawnWildlife();
-        Gdx.app.log("MapLoad", "Successfully loaded: " + file.name());
     }
 
-    private Tile createTile(int x, int y, int type) {
-        return switch (type) {
-            case 0 -> new Fence(x, y);
-            case 1 -> new Debris(x, y, new SoilTile(x, y));
-            case 2 -> new Entrance(x, y);
-            case 3 -> new Exit(x, y);
-            case 4 -> new ToolItem(x, y, ToolItem.ItemType.SHOVEL);
-            case 5 -> new ToolItem(x, y, ToolItem.ItemType.FERTILIZER);
-            case 6 -> new ToolItem(x, y, ToolItem.ItemType.WATERING_CAN);
-            default -> new SoilTile(x, y);
-        };
+    private void loadTmxMap(String tmxPath) {
+        try {
+            FileHandle tmxFile = Gdx.files.internal(tmxPath);
+            if (!tmxFile.exists()) {
+                Gdx.app.error("MapLoader", "TMX file not found: " + tmxPath);
+                return;
+            }
+
+            tiledMap = new TmxMapLoader().load(tmxPath);
+            tiledMapRenderer = new OrthogonalTiledMapRenderer(tiledMap, UNIT_SCALE);
+            Gdx.app.log("MapLoader", "✅ TMX map loaded successfully: " + tmxPath);
+
+        } catch (Exception e) {
+            Gdx.app.error("MapLoader", "Failed to load TMX: " + e.getMessage());
+            e.printStackTrace();
+            tiledMap = null;
+            tiledMapRenderer = null;
+        }
     }
 
-    // ========== WALL BODIES ==========
+    public void renderTmxBackground(OrthographicCamera camera) {
+        if (tiledMapRenderer != null) {
+            tiledMapRenderer.setView(camera);
+            tiledMapRenderer.render();
+        }
+    }
+
     private void createWallBodies() {
         for (int x = 0; x < MAP_WIDTH; x++) {
             for (int y = 0; y < MAP_HEIGHT; y++) {
@@ -190,13 +141,12 @@ public class GameMap {
         shape.dispose();
     }
 
-    // ========== GAME OBJECTS & WILDLIFE ==========
     private void spawnGameObjects() {
         gameObjects.clear();
         Random rand = new Random();
         for (int i = 0; i < 5; i++) {
-            int x = 5 + rand.nextInt(10);
-            int y = 5 + rand.nextInt(10);
+            int x = 5 + rand.nextInt(20);
+            int y = 5 + rand.nextInt(20);
             gameObjects.add(new GameObject(x, y, Textures.getRandomObject()));
         }
     }
@@ -205,15 +155,14 @@ public class GameMap {
         wildlifeVisitors.clear();
         Random rand = new Random();
         for (int i = 0; i < 3; i++) {
-            int x = 3 + rand.nextInt(15);
-            int y = 3 + rand.nextInt(15);
+            int x = 3 + rand.nextInt(25);
+            int y = 3 + rand.nextInt(25);
             WildlifeVisitor.WildlifeType type =
                     WildlifeVisitor.WildlifeType.values()[rand.nextInt(3)];
             wildlifeVisitors.add(new WildlifeVisitor(world, x, y, type));
         }
     }
 
-    // ========== GAME TICK ==========
     public void tick(float frameTime) {
         this.player.tick(frameTime);
         handlePlayerInteraction();
@@ -231,13 +180,11 @@ public class GameMap {
         doPhysicsStep(frameTime);
     }
 
-    // ========== PLAYER INTERACTION ==========
     private void handlePlayerInteraction() {
         int px = player.getTileX();
         int py = player.getTileY();
-
-        // Pick up tools when standing on them
         Tile currentTile = getTile(px, py);
+
         if (currentTile instanceof ToolItem) {
             ToolItem toolItem = (ToolItem) currentTile;
             player.addItem(toolItem.getItemType());
@@ -245,7 +192,6 @@ public class GameMap {
             Gdx.app.log("GameMap", "Picked up tool: " + toolItem.getItemType());
         }
 
-        // Use tool on SPACE key
         if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
             useTool(px, py);
         }
@@ -302,7 +248,6 @@ public class GameMap {
         }
     }
 
-    // ========== PHYSICS ==========
     private void doPhysicsStep(float frameTime) {
         this.physicsTime += frameTime;
         while (this.physicsTime >= TIME_STEP) {
@@ -311,18 +256,10 @@ public class GameMap {
         }
     }
 
-    // ========== GETTERS ==========
-    public Player getPlayer() {
-        return player;
-    }
-
-    public Tile[][] getTiles() {
-        return tiles;
-    }
-
-    public GroundTile[][] getGroundLayer() {
-        return groundLayer;
-    }
+    // Getters
+    public Player getPlayer() { return player; }
+    public Tile[][] getTiles() { return tiles; }
+    public GroundTile[][] getGroundLayer() { return groundLayer; }
 
     public Tile getTile(int x, int y) {
         if (x >= 0 && x < MAP_WIDTH && y >= 0 && y < MAP_HEIGHT) {
@@ -331,23 +268,15 @@ public class GameMap {
         return null;
     }
 
-    public List<GameObject> getGameObjects() {
-        return gameObjects;
-    }
+    public List<GameObject> getGameObjects() { return gameObjects; }
+    public List<WildlifeVisitor> getWildlifeVisitors() { return wildlifeVisitors; }
+    public int getWidth() { return MAP_WIDTH; }
+    public int getHeight() { return MAP_HEIGHT; }
+    public World getWorld() { return world; }
+    public boolean hasTmxMap() { return tiledMap != null; }
 
-    public List<WildlifeVisitor> getWildlifeVisitors() {
-        return wildlifeVisitors;
-    }
-
-    public int getWidth() {
-        return MAP_WIDTH;
-    }
-
-    public int getHeight() {
-        return MAP_HEIGHT;
-    }
-
-    public World getWorld() {
-        return world;
+    public void dispose() {
+        if (tiledMap != null) tiledMap.dispose();
+        if (tiledMapRenderer != null) tiledMapRenderer.dispose();
     }
 }
