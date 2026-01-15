@@ -26,9 +26,9 @@ public class GameScreen implements Screen {
         this.game = game;
         this.batch = game.getBatch();
 
-        // Camera setup - adjust zoom here
+        // Camera setup - zoomed in to show ~60% of map (20 units instead of 32)
         this.camera = new OrthographicCamera();
-        this.camera.setToOrtho(false, 32, 32);  // Changed to match 32x32 map
+        this.camera.setToOrtho(false, 20, 20);
         this.camera.update();
 
         this.font = new BitmapFont();
@@ -171,49 +171,23 @@ public class GameScreen implements Screen {
             return;
         }
 
-        float playerX = player.getX();
-        float playerY = player.getY();
+        // Kamera folgt dem Spieler direkt - Spieler bleibt in der Mitte
+        float cameraX = player.getX();
+        float cameraY = player.getY();
+
+        // Kamera innerhalb der Map-Grenzen halten (keine schwarzen Bereiche)
         float viewportWidth = camera.viewportWidth;
         float viewportHeight = camera.viewportHeight;
-        float deadZoneWidth = viewportWidth * 0.8f;
-        float deadZoneHeight = viewportHeight * 0.8f;
-        float cameraX = camera.position.x;
-        float cameraY = camera.position.y;
-        float deadZoneLeft = cameraX - deadZoneWidth / 2;
-        float deadZoneRight = cameraX + deadZoneWidth / 2;
-        float deadZoneBottom = cameraY - deadZoneHeight / 2;
-        float deadZoneTop = cameraY + deadZoneHeight / 2;
-
-        if (playerX < deadZoneLeft) {
-            cameraX = playerX + deadZoneWidth / 2;
-        } else if (playerX > deadZoneRight) {
-            cameraX = playerX - deadZoneWidth / 2;
-        }
-
-        if (playerY < deadZoneBottom) {
-            cameraY = playerY + deadZoneHeight / 2;
-        } else if (playerY > deadZoneTop) {
-            cameraY = playerY - deadZoneHeight / 2;
-        }
-
         float mapWidth = gameMap.getWidth();
         float mapHeight = gameMap.getHeight();
 
-        if (mapWidth < viewportWidth) {
-            cameraX = mapWidth / 2f;
-        } else {
-            float minCameraX = viewportWidth / 2;
-            float maxCameraX = mapWidth - viewportWidth / 2;
-            cameraX = Math.max(minCameraX, Math.min(maxCameraX, cameraX));
-        }
+        float minCameraX = viewportWidth / 2;
+        float maxCameraX = mapWidth - viewportWidth / 2;
+        float minCameraY = viewportHeight / 2;
+        float maxCameraY = mapHeight - viewportHeight / 2;
 
-        if (mapHeight < viewportHeight) {
-            cameraY = mapHeight / 2f;
-        } else {
-            float minCameraY = viewportHeight / 2;
-            float maxCameraY = mapHeight - viewportHeight / 2;
-            cameraY = Math.max(minCameraY, Math.min(maxCameraY, cameraY));
-        }
+        cameraX = Math.max(minCameraX, Math.min(maxCameraX, cameraX));
+        cameraY = Math.max(minCameraY, Math.min(maxCameraY, cameraY));
 
         camera.position.set(cameraX, cameraY, 0);
         camera.update();
@@ -222,7 +196,7 @@ public class GameScreen implements Screen {
     @Override
     public void resize(int width, int height) {
         float aspectRatio = (float) width / (float) height;
-        camera.setToOrtho(false, 32 * aspectRatio, 32);  // Changed to match 32x32 map
+        camera.setToOrtho(false, 20 * aspectRatio, 20);  // Zoomed in view
         camera.update();
     }
 
