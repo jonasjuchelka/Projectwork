@@ -30,9 +30,12 @@ public class GameMap {
 
     // TMX maps only
     private static final String[] TMX_MAPS = {
-            "maps/map-1.tmx"
-            // Add more later: "maps/map-2.tmx", etc.
+            "maps/map-1.tmx",
+            "maps/map-2.tmx",
+            "maps/map-3.tmx",
+            "maps/map-4.tmx"
     };
+
 
     private float physicsTime = 0;
     private final ValleyDayGame game;
@@ -76,7 +79,9 @@ public class GameMap {
     }
 
     private void loadRandomMap() {
-        int mapIndex = 0;  // Always load map-1 for now (change to random later)
+        Random rand = new Random();
+        int mapIndex = rand.nextInt(TMX_MAPS.length);  // Random map!
+        // Always load map-1 for now (change to random later)
         String tmxPath = TMX_MAPS[mapIndex];
 
         Gdx.app.log("MapLoader", "Loading TMX map: " + tmxPath);
