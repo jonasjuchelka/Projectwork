@@ -79,8 +79,8 @@ public class Textures {
         WATERING_CAN = SpriteSheet.HARVEST.at(1,7);
 
         SNAIL = SpriteSheet.SNAIL.at(1,3);
-        RAT = SpriteSheet.CREATURES.at(10, 3);
-        CROW = SpriteSheet.CREATURES.at(14, 7);
+        RAT = SpriteSheet.CREATURES.at(1, 1);   // Zombie oben links
+        CROW = SpriteSheet.CREATURES.at(1, 5);  // Grünes Wesen Reihe 1, Spalte 5 
 
         PLAYER = playerRegion;  // RED player!
         CHEST = SpriteSheet.OBJECTS.at(1, 1);

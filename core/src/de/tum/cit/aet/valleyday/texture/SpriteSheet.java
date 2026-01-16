@@ -24,8 +24,8 @@ public enum SpriteSheet {
     /** The extended basic tiles spritesheet for ground tiles, which has a grid size of 16x16. */
     BASIC_TILES_EXTENDED("basictiles.png", 16, 16),
 
-    /** The NPC / creatures spritesheet, which has a grid size of 16x16. */
-    CREATURES("npc.png", 16, 16),
+    /** The NPC / creatures spritesheet, which has a grid size of 17x17. */
+    CREATURES("creatures.png", 17, 17),
 
     /** The fence/gate spritesheet, which has 4 sprites of size 48x24 in a horizontal row. */
     FENCE("Fance_Gate.png", 48, 24),
@@ -60,7 +60,6 @@ public enum SpriteSheet {
                 this.height
         );
     }
-
 
     public TextureRegion atVertical(int startRow, int column, int numRows) {
         return new TextureRegion(

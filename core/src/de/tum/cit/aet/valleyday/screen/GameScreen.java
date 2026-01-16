@@ -3,11 +3,16 @@ package de.tum.cit.aet.valleyday.screen;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import de.tum.cit.aet.valleyday.ValleyDayGame;
+import de.tum.cit.aet.valleyday.map.ChaserZombie;
 import de.tum.cit.aet.valleyday.map.GameMap;
 import de.tum.cit.aet.valleyday.map.GameObject;
 import de.tum.cit.aet.valleyday.map.Player;
@@ -21,6 +26,12 @@ public class GameScreen implements Screen {
     private OrthographicCamera camera;
     private GameMap gameMap;
     private BitmapFont font;
+    private ShapeRenderer shapeRenderer;
+    private GlyphLayout glyphLayout;
+
+    // Spawn delayAber
+    private float spawnDelay = 1.5f;
+    private boolean playerVisible = false;
 
     public GameScreen(ValleyDayGame game) {
         this.game = game;
@@ -32,6 +43,8 @@ public class GameScreen implements Screen {
         this.camera.update();
 
         this.font = new BitmapFont();
+        this.shapeRenderer = new ShapeRenderer();
+        this.glyphLayout = new GlyphLayout();
         Gdx.app.log("GameScreen", "Creating GameScreen");
 
         // GameMap handles everything internally
@@ -56,8 +69,18 @@ public class GameScreen implements Screen {
         Gdx.gl.glClearColor(0.2f, 0.2f, 0.2f, 1f);
         Gdx.gl.glClear(com.badlogic.gdx.graphics.GL20.GL_COLOR_BUFFER_BIT);
 
+        // Handle spawn delay
+        if (!playerVisible) {
+            spawnDelay -= delta;
+            if (spawnDelay <= 0) {
+                playerVisible = true;
+            }
+        }
+
         if (gameMap != null) {
-            gameMap.tick(delta);
+            if (playerVisible && !gameMap.isGameOver()) {
+                gameMap.tick(delta);
+            }
             updateCamera();
 
             // ========== RENDER ORDER (LAYERED) ==========
@@ -79,21 +102,63 @@ public class GameScreen implements Screen {
             batch.end();
         }
 
-        // HUD - uses screen coordinates
-        batch.getProjectionMatrix().setToOrtho2D(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-        batch.setProjectionMatrix(batch.getProjectionMatrix());
-        batch.begin();
-        font.draw(batch, "Valley Day - TMX Map", 10, Gdx.graphics.getHeight() - 10);
-        font.draw(batch, "WASD to move, SPACE to use tool, ESC to menu", 10, Gdx.graphics.getHeight() - 30);
-        if (gameMap != null && gameMap.getPlayer() != null) {
-            Player p = gameMap.getPlayer();
-            font.draw(batch, "Player: (" + (int)p.getX() + ", " + (int)p.getY() + ")", 10, Gdx.graphics.getHeight() - 50);
+        // HUD - uses screen coordinates (only show if not game over)
+        if (gameMap == null || !gameMap.isGameOver()) {
+            batch.getProjectionMatrix().setToOrtho2D(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+            batch.setProjectionMatrix(batch.getProjectionMatrix());
+            batch.begin();
+            font.draw(batch, "Valley Day - TMX Map", 10, Gdx.graphics.getHeight() - 10);
+            font.draw(batch, "WASD to move, SPACE to use tool, E to shoo wildlife, ESC to menu", 10, Gdx.graphics.getHeight() - 30);
+            if (gameMap != null && gameMap.getPlayer() != null) {
+                Player p = gameMap.getPlayer();
+                font.draw(batch, "Player: (" + (int)p.getX() + ", " + (int)p.getY() + ")", 10, Gdx.graphics.getHeight() - 50);
+            }
+            batch.end();
         }
-        batch.end();
+
+        // Game Over Overlay
+        if (gameMap != null && gameMap.isGameOver()) {
+            renderGameOverOverlay();
+        }
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
             game.returnToMenu();
         }
+    }
+
+    private void renderGameOverOverlay() {
+        int screenWidth = Gdx.graphics.getWidth();
+        int screenHeight = Gdx.graphics.getHeight();
+
+        // Draw semi-transparent black overlay
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        shapeRenderer.setColor(0, 0, 0, 0.7f);
+        shapeRenderer.rect(0, 0, screenWidth, screenHeight);
+        shapeRenderer.end();
+        Gdx.gl.glDisable(GL20.GL_BLEND);
+
+        // Draw text
+        batch.getProjectionMatrix().setToOrtho2D(0, 0, screenWidth, screenHeight);
+        batch.setProjectionMatrix(batch.getProjectionMatrix());
+        batch.begin();
+
+        font.setColor(Color.WHITE);
+        String gameOverText = "Game Over";
+        String escText = "Press ESC to exit";
+
+        glyphLayout.setText(font, gameOverText);
+        float gameOverX = (screenWidth - glyphLayout.width) / 2;
+        float gameOverY = screenHeight / 2 + 20;
+        font.draw(batch, gameOverText, gameOverX, gameOverY);
+
+        glyphLayout.setText(font, escText);
+        float escX = (screenWidth - glyphLayout.width) / 2;
+        float escY = screenHeight / 2 - 20;
+        font.draw(batch, escText, escX, escY);
+
+        batch.end();
     }
 
     private void renderGroundLayer() {
@@ -154,10 +219,18 @@ public class GameScreen implements Screen {
                 }
             }
 
-            // STEP 4: Render player (on top of everything)
-            Player player = gameMap.getPlayer();
-            if (player != null && player.getCurrentAppearance() != null) {
-                batch.draw(player.getCurrentAppearance(), player.getX(), player.getY(), 1, 1);
+            // STEP 3.5: Render Chaser Zombie
+            ChaserZombie chaser = gameMap.getChaserZombie();
+            if (chaser != null && chaser.isActive() && chaser.getCurrentAppearance() != null) {
+                batch.draw(chaser.getCurrentAppearance(), chaser.getX(), chaser.getY(), 1, 1);
+            }
+
+            // STEP 4: Render player (on top of everything) - only if visible and not game over
+            if (playerVisible && !gameMap.isGameOver()) {
+                Player player = gameMap.getPlayer();
+                if (player != null && player.getCurrentAppearance() != null) {
+                    batch.draw(player.getCurrentAppearance(), player.getX(), player.getY(), 1, 1);
+                }
             }
 
         } catch (Exception e) {
@@ -212,6 +285,7 @@ public class GameScreen implements Screen {
     @Override
     public void dispose() {
         if (font != null) font.dispose();
+        if (shapeRenderer != null) shapeRenderer.dispose();
         if (gameMap != null) gameMap.dispose();
     }
 }

@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.physics.box2d.BodyDef;
 import com.badlogic.gdx.physics.box2d.CircleShape;
+import com.badlogic.gdx.physics.box2d.FixtureDef;
 import com.badlogic.gdx.physics.box2d.World;
 import de.tum.cit.aet.valleyday.texture.Animations;
 import de.tum.cit.aet.valleyday.texture.Drawable;
@@ -45,7 +46,14 @@ public class Player implements Drawable {
 
         CircleShape circle = new CircleShape();
         circle.setRadius(0.3f);
-        body.createFixture(circle, 1.0f);
+
+        FixtureDef fixtureDef = new FixtureDef();
+        fixtureDef.shape = circle;
+        fixtureDef.density = 1.0f;
+        fixtureDef.filter.categoryBits = GameMap.CATEGORY_PLAYER;
+        fixtureDef.filter.maskBits = GameMap.MASK_PLAYER;  // Kollidiert mit Wänden
+
+        body.createFixture(fixtureDef);
         circle.dispose();
         body.setUserData(this);
         return body;
@@ -165,5 +173,9 @@ public class Player implements Drawable {
 
     public int getTileY() {
         return (int) getY();
+    }
+
+    public Body getHitbox() {
+        return hitbox;
     }
 }

@@ -12,9 +12,4 @@ public class DesktopLauncher {
         new Lwjgl3Application(new ValleyDayGame(), config);
     }
 
-
-    
-
-
-
 }

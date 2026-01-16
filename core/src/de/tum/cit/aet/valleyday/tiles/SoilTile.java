@@ -56,4 +56,8 @@ public class SoilTile extends Tile {
             crop.restore();
         }
     }
+
+    public void removeCrop() {
+        crop = null;
+    }
 }

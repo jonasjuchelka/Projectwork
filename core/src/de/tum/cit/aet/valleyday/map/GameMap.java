@@ -5,6 +5,7 @@ import com.badlogic.gdx.Input;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.maps.tiled.TiledMap;
+import com.badlogic.gdx.maps.tiled.TiledMapTileLayer;
 import com.badlogic.gdx.maps.tiled.TmxMapLoader;
 import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer;
 import com.badlogic.gdx.math.Vector2;
@@ -14,7 +15,9 @@ import de.tum.cit.aet.valleyday.texture.Textures;
 import de.tum.cit.aet.valleyday.tiles.*;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 import java.util.Random;
 
 public class GameMap {
@@ -27,6 +30,16 @@ public class GameMap {
     private static final int POSITION_ITERATIONS = 2;
     private static final int MAP_WIDTH = 32;
     private static final int MAP_HEIGHT = 32;
+
+    // Collision Categories für Box2D Filtering
+    public static final short CATEGORY_WALL = 0x0001;
+    public static final short CATEGORY_PLAYER = 0x0002;
+    public static final short CATEGORY_WILDLIFE = 0x0004;
+
+    // Collision Masks - definiert womit jede Kategorie kollidiert
+    public static final short MASK_WALL = CATEGORY_PLAYER;  // Wände kollidieren nur mit Spieler
+    public static final short MASK_PLAYER = CATEGORY_WALL;  // Spieler kollidiert mit Wänden
+    public static final short MASK_WILDLIFE = 0;  // Wildlife kollidiert mit nichts
 
     // TMX maps only
     private static final String[] TMX_MAPS = {
@@ -50,10 +63,25 @@ public class GameMap {
     private OrthogonalTiledMapRenderer tiledMapRenderer;
     private final float UNIT_SCALE = 1f / 16f;
 
+    // Game Over state
+    private boolean gameOver = false;
+
+    // Chaser Zombie System
+    private ChaserZombie chaserZombie;
+    private float gameTime = 0;
+    private static final float CHASER_SPAWN_DELAY = 5.0f;
+    private static final float CHASER_FOLLOW_DELAY = 5.0f;
+    private static final float POSITION_RECORD_INTERVAL = 0.1f;
+    private float positionRecordTimer = 0;
+
+    // Position History für den Chaser (speichert Positionen mit Zeitstempel)
+    private final Queue<float[]> positionHistory = new LinkedList<>();
+
+
     public GameMap(ValleyDayGame game) {
         this.game = game;
         this.world = new World(Vector2.Zero, true);
-        this.player = new Player(this.world, 16f, 16f);
+        this.player = new Player(this.world, 7f, 30f);
         this.tiles = new Tile[MAP_WIDTH][MAP_HEIGHT];
         this.groundLayer = new GroundTile[MAP_WIDTH][MAP_HEIGHT];
         this.gameObjects = new ArrayList<>();
@@ -124,14 +152,22 @@ public class GameMap {
     }
 
     private void createWallBodies() {
+        // Nur die äußeren Ränder der Map als Wände erstellen (Zeile/Spalte 0 und 31)
+        // Der Spieler kann sich frei innerhalb der Map bewegen
+
+        // Oberer und unterer Rand
         for (int x = 0; x < MAP_WIDTH; x++) {
-            for (int y = 0; y < MAP_HEIGHT; y++) {
-                Tile tile = tiles[x][y];
-                if (tile instanceof Fence) {
-                    createWallBody(x, y);
-                }
-            }
+            createWallBody(x, 0);           // Unterer Rand (y=0)
+            createWallBody(x, MAP_HEIGHT - 1);  // Oberer Rand (y=31)
         }
+
+        // Linker und rechter Rand (ohne Ecken, die sind schon oben erstellt)
+        for (int y = 1; y < MAP_HEIGHT - 1; y++) {
+            createWallBody(0, y);           // Linker Rand (x=0)
+            createWallBody(MAP_WIDTH - 1, y);  // Rechter Rand (x=31)
+        }
+
+        Gdx.app.log("MapLoader", "Wall bodies created for map borders only");
     }
 
     private void createWallBody(int x, int y) {
@@ -139,9 +175,17 @@ public class GameMap {
         bodyDef.type = BodyDef.BodyType.StaticBody;
         bodyDef.position.set(x + 0.5f, y + 0.5f);
         Body body = world.createBody(bodyDef);
+
         PolygonShape shape = new PolygonShape();
         shape.setAsBox(0.5f, 0.5f);
-        body.createFixture(shape, 1.0f);
+
+        FixtureDef fixtureDef = new FixtureDef();
+        fixtureDef.shape = shape;
+        fixtureDef.density = 1.0f;
+        fixtureDef.filter.categoryBits = CATEGORY_WALL;
+        fixtureDef.filter.maskBits = MASK_WALL;  // Kollidiert nur mit Spieler
+
+        body.createFixture(fixtureDef);
         shape.dispose();
     }
 
@@ -158,18 +202,45 @@ public class GameMap {
     private void spawnWildlife() {
         wildlifeVisitors.clear();
         Random rand = new Random();
-        for (int i = 0; i < 3; i++) {
-            int x = 3 + rand.nextInt(25);
-            int y = 3 + rand.nextInt(25);
-            WildlifeVisitor.WildlifeType type =
-                    WildlifeVisitor.WildlifeType.values()[rand.nextInt(3)];
-            wildlifeVisitors.add(new WildlifeVisitor(world, x, y, type));
+
+        // 10 RATs (Zombies) zufällig auf der Map spawnen
+        for (int i = 0; i < 10; i++) {
+            int x = 5 + rand.nextInt(22);  // Zwischen 5 und 26
+            int y = 5 + rand.nextInt(22);
+            wildlifeVisitors.add(new WildlifeVisitor(world, x, y, WildlifeVisitor.WildlifeType.RAT, this));
+        }
+
+        // 10 CROWs zufällig auf der Map spawnen
+        for (int i = 0; i < 10; i++) {
+            int x = 5 + rand.nextInt(22);
+            int y = 5 + rand.nextInt(22);
+            wildlifeVisitors.add(new WildlifeVisitor(world, x, y, WildlifeVisitor.WildlifeType.CROW, this));
         }
     }
 
     public void tick(float frameTime) {
+        if (gameOver) return;
+
+        gameTime += frameTime;
+
         this.player.tick(frameTime);
         handlePlayerInteraction();
+
+        // Spieler-Position aufzeichnen für Chaser
+        recordPlayerPosition(frameTime);
+
+        // Chaser Zombie spawnen nach 5 Sekunden
+        if (chaserZombie == null && gameTime >= CHASER_SPAWN_DELAY) {
+            spawnChaserZombie();
+        }
+
+        // Chaser Zombie updaten
+        if (chaserZombie != null) {
+            updateChaserZombie(frameTime);
+            chaserZombie.tick(frameTime);
+        }
+
+        checkGameOver();
 
         for (WildlifeVisitor visitor : wildlifeVisitors) {
             visitor.tick(frameTime);
@@ -182,6 +253,38 @@ public class GameMap {
         }
 
         doPhysicsStep(frameTime);
+    }
+
+    private void recordPlayerPosition(float frameTime) {
+        positionRecordTimer += frameTime;
+        if (positionRecordTimer >= POSITION_RECORD_INTERVAL) {
+            positionRecordTimer = 0;
+            // Position mit Zeitstempel speichern: [x, y, time]
+            positionHistory.add(new float[]{player.getX(), player.getY(), gameTime});
+        }
+    }
+
+    private void spawnChaserZombie() {
+        // Chaser spawnt am Eingang (7, 30 - gleiche Position wie Spieler-Start)
+        chaserZombie = new ChaserZombie(world, 7f, 30f);
+        chaserZombie.activate();
+        Gdx.app.log("GameMap", "Chaser Zombie spawned!");
+    }
+
+    private void updateChaserZombie(float frameTime) {
+        // Chaser folgt der Position von vor 5 Sekunden
+        float targetTime = gameTime - CHASER_FOLLOW_DELAY;
+
+        // Alte Positionen entfernen und die richtige Zielposition finden
+        while (!positionHistory.isEmpty()) {
+            float[] pos = positionHistory.peek();
+            if (pos[2] <= targetTime) {
+                chaserZombie.setTarget(pos[0], pos[1]);
+                positionHistory.poll();
+            } else {
+                break;
+            }
+        }
     }
 
     private void handlePlayerInteraction() {
@@ -198,6 +301,28 @@ public class GameMap {
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
             useTool(px, py);
+        }
+
+        // E-Taste zum Verscheuchen von Wildlife
+        if (Gdx.input.isKeyJustPressed(Input.Keys.E)) {
+            shooWildlife();
+        }
+    }
+
+    private void shooWildlife() {
+        float playerX = player.getX();
+        float playerY = player.getY();
+        float shooRange = 3.0f;
+
+        for (WildlifeVisitor visitor : wildlifeVisitors) {
+            float dx = playerX - visitor.getX();
+            float dy = playerY - visitor.getY();
+            float distance = (float) Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < shooRange) {
+                visitor.frighten();
+                Gdx.app.log("GameMap", "Shooed wildlife!");
+            }
         }
     }
 
@@ -260,7 +385,49 @@ public class GameMap {
         }
     }
 
+    private void checkGameOver() {
+        float playerX = player.getX();
+        float playerY = player.getY();
+        int px = player.getTileX();
+        int py = player.getTileY();
+
+        // Game Over bei Exit Position (1, 3)
+        if (px == 1 && py == 3) {
+            gameOver = true;
+            player.getHitbox().setLinearVelocity(0, 0);
+            return;
+        }
+
+        // Kollision mit Wildlife prüfen
+        for (WildlifeVisitor visitor : wildlifeVisitors) {
+            float dx = playerX - visitor.getX();
+            float dy = playerY - visitor.getY();
+            float distance = (float) Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < 0.6f) {
+                gameOver = true;
+                player.getHitbox().setLinearVelocity(0, 0);
+                Gdx.app.log("GameMap", "Game Over: Caught by wildlife!");
+                return;
+            }
+        }
+
+        // Kollision mit Chaser Zombie prüfen
+        if (chaserZombie != null && chaserZombie.isActive()) {
+            float dx = playerX - chaserZombie.getX();
+            float dy = playerY - chaserZombie.getY();
+            float distance = (float) Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < 0.6f) {
+                gameOver = true;
+                player.getHitbox().setLinearVelocity(0, 0);
+                Gdx.app.log("GameMap", "Game Over: Caught by Chaser Zombie!");
+            }
+        }
+    }
+
     // Getters
+    public boolean isGameOver() { return gameOver; }
     public Player getPlayer() { return player; }
     public Tile[][] getTiles() { return tiles; }
     public GroundTile[][] getGroundLayer() { return groundLayer; }
@@ -274,6 +441,7 @@ public class GameMap {
 
     public List<GameObject> getGameObjects() { return gameObjects; }
     public List<WildlifeVisitor> getWildlifeVisitors() { return wildlifeVisitors; }
+    public ChaserZombie getChaserZombie() { return chaserZombie; }
     public int getWidth() { return MAP_WIDTH; }
     public int getHeight() { return MAP_HEIGHT; }
     public World getWorld() { return world; }
