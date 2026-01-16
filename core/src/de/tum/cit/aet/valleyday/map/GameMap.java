@@ -31,7 +31,6 @@ public class GameMap {
     // TMX maps only
     private static final String[] TMX_MAPS = {
             "maps/map-1.tmx",
-            "maps/map-2.tmx",
             "maps/map-3.tmx",
             "maps/map-4.tmx"
     };
