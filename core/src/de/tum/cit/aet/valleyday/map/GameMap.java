@@ -41,12 +41,53 @@ public class GameMap {
     public static final short MASK_PLAYER = CATEGORY_WALL;  // Spieler kollidiert mit Wänden
     public static final short MASK_WILDLIFE = 0;  // Wildlife kollidiert mit nichts
 
-    // TMX maps only
+    // TMX maps - index 0=map-1, 1=map-3, 2=map-4
     private static final String[] TMX_MAPS = {
-            "maps/map-1.tmx",
-            "maps/map-3.tmx",
-            "maps/map-4.tmx"
+            "maps/map-1.tmx",  // index 0
+            "maps/map-3.tmx",  // index 1
+            "maps/map-4.tmx"   // index 2
     };
+
+    // Entrance positions (x, y) for each map - where player spawns
+    private static final float[][] MAP_ENTRANCES = {
+            {7f, 30f},   // map-1: entrance at (7, 30)
+            {6f, 30f},   // map-3: entrance at (6, 30)
+            {1f, 30f}    // map-4: entrance at (1, 30)
+    };
+
+    // Exit positions (tile x, tile y) for each map - level complete when reached
+    private static final int[][] MAP_EXITS = {
+            {1, 3},      // map-1: exit at (1, 3)
+            {28, 18},    // map-3: exit at (28, 18)
+            {30, 1}      // map-4: exit at (30, 1)
+    };
+
+    // Level to Map mapping: Level 1-2 = map-1, Level 3-4 = map-4, Level 5 = map-3
+    private static final int[] LEVEL_TO_MAP = {
+            0,  // Level 1 -> map-1 (index 0)
+            0,  // Level 2 -> map-1 (index 0)
+            2,  // Level 3 -> map-4 (index 2)
+            2,  // Level 4 -> map-4 (index 2)
+            1   // Level 5 -> map-3 (index 1)
+    };
+
+    private static final int MAX_LEVEL = 5;
+
+    // Geschwindigkeiten pro Level (Level 2 = aktuelle Geschwindigkeit 5.0)
+    // Level 1: langsamer, Level 2: normal, Level 3-5: zunehmend schneller
+    private static final float[] LEVEL_SPEEDS = {
+            4.0f,   // Level 1 - langsam (Einführung)
+            5.0f,   // Level 2 - normal (aktuelle Geschwindigkeit)
+            6.0f,   // Level 3 - schneller
+            7.0f,   // Level 4 - noch schneller
+            8.5f    // Level 5 - sehr schnell (Endgegner)
+    };
+
+    // Current level (1-5) and map index
+    private int currentLevel = 1;
+    private int currentMapIndex = 0;
+    private boolean levelComplete = false;
+    private boolean gameWon = false;
 
 
     private float physicsTime = 0;
@@ -77,11 +118,24 @@ public class GameMap {
     // Position History für den Chaser (speichert Positionen mit Zeitstempel)
     private final Queue<float[]> positionHistory = new LinkedList<>();
 
+    // Daylight Countdown Timer - 5 Minuten pro Level
+    private static final float LEVEL_TIME_LIMIT = 5 * 60f;  // 5 Minuten in Sekunden
+    private float remainingTime = LEVEL_TIME_LIMIT;
+
 
     public GameMap(ValleyDayGame game) {
         this.game = game;
         this.world = new World(Vector2.Zero, true);
-        this.player = new Player(this.world, 7f, 30f);
+
+        // Start at Level 1, get map index from level mapping
+        this.currentLevel = 1;
+        this.currentMapIndex = LEVEL_TO_MAP[currentLevel - 1];
+
+        // Get entrance position for selected map
+        float entranceX = MAP_ENTRANCES[currentMapIndex][0];
+        float entranceY = MAP_ENTRANCES[currentMapIndex][1];
+
+        this.player = new Player(this.world, entranceX, entranceY);
         this.tiles = new Tile[MAP_WIDTH][MAP_HEIGHT];
         this.groundLayer = new GroundTile[MAP_WIDTH][MAP_HEIGHT];
         this.gameObjects = new ArrayList<>();
@@ -101,17 +155,16 @@ public class GameMap {
             }
         }
 
-        // Load TMX map
-        loadRandomMap();
+        // Load TMX map for current level
+        loadCurrentLevelMap();
     }
 
-    private void loadRandomMap() {
-        Random rand = new Random();
-        int mapIndex = rand.nextInt(TMX_MAPS.length);  // Random map!
-        // Always load map-1 for now (change to random later)
-        String tmxPath = TMX_MAPS[mapIndex];
+    private void loadCurrentLevelMap() {
+        // Get map index from level mapping
+        currentMapIndex = LEVEL_TO_MAP[currentLevel - 1];
+        String tmxPath = TMX_MAPS[currentMapIndex];
 
-        Gdx.app.log("MapLoader", "Loading TMX map: " + tmxPath);
+        Gdx.app.log("MapLoader", "Loading Level " + currentLevel + " - TMX map: " + tmxPath);
 
         // Load the TMX map
         loadTmxMap(tmxPath);
@@ -223,6 +276,18 @@ public class GameMap {
 
         gameTime += frameTime;
 
+        // Timer herunterzählen
+        remainingTime -= frameTime;
+        if (remainingTime <= 0) {
+            remainingTime = 0;
+            gameOver = true;
+            player.getHitbox().setLinearVelocity(0, 0);
+            Gdx.app.log("GameMap", "Game Over: Zeit abgelaufen!");
+            return;
+        }
+
+        // Spieler-Geschwindigkeit für aktuelles Level setzen
+        player.setMovementSpeed(getCurrentSpeed());
         this.player.tick(frameTime);
         handlePlayerInteraction();
 
@@ -236,6 +301,7 @@ public class GameMap {
 
         // Chaser Zombie updaten
         if (chaserZombie != null) {
+            chaserZombie.setMoveSpeed(getCurrentSpeed());  // Geschwindigkeit aktualisieren
             updateChaserZombie(frameTime);
             chaserZombie.tick(frameTime);
         }
@@ -265,10 +331,13 @@ public class GameMap {
     }
 
     private void spawnChaserZombie() {
-        // Chaser spawnt am Eingang (7, 30 - gleiche Position wie Spieler-Start)
-        chaserZombie = new ChaserZombie(world, 7f, 30f);
+        // Chaser spawnt am Eingang (gleiche Position wie Spieler-Start, map-specific)
+        float entranceX = MAP_ENTRANCES[currentMapIndex][0];
+        float entranceY = MAP_ENTRANCES[currentMapIndex][1];
+        chaserZombie = new ChaserZombie(world, entranceX, entranceY);
+        chaserZombie.setMoveSpeed(getCurrentSpeed());  // Gleiche Geschwindigkeit wie Spieler
         chaserZombie.activate();
-        Gdx.app.log("GameMap", "Chaser Zombie spawned!");
+        Gdx.app.log("GameMap", "Chaser Zombie spawned at (" + entranceX + ", " + entranceY + ") with speed " + getCurrentSpeed());
     }
 
     private void updateChaserZombie(float frameTime) {
@@ -391,10 +460,22 @@ public class GameMap {
         int px = player.getTileX();
         int py = player.getTileY();
 
-        // Game Over bei Exit Position (1, 3)
-        if (px == 1 && py == 3) {
-            gameOver = true;
+        // Level Complete bei Exit Position (map-specific)
+        int exitX = MAP_EXITS[currentMapIndex][0];
+        int exitY = MAP_EXITS[currentMapIndex][1];
+        if (px == exitX && py == exitY) {
             player.getHitbox().setLinearVelocity(0, 0);
+
+            if (currentLevel >= MAX_LEVEL) {
+                // Alle Level geschafft - Spiel gewonnen!
+                gameWon = true;
+                gameOver = true;
+                Gdx.app.log("GameMap", "Game Won! All " + MAX_LEVEL + " levels completed!");
+            } else {
+                // Nächstes Level starten
+                levelComplete = true;
+                Gdx.app.log("GameMap", "Level " + currentLevel + " complete! Moving to level " + (currentLevel + 1));
+            }
             return;
         }
 
@@ -428,6 +509,10 @@ public class GameMap {
 
     // Getters
     public boolean isGameOver() { return gameOver; }
+    public boolean isLevelComplete() { return levelComplete; }
+    public boolean isGameWon() { return gameWon; }
+    public int getCurrentLevel() { return currentLevel; }
+    public int getMaxLevel() { return MAX_LEVEL; }
     public Player getPlayer() { return player; }
     public Tile[][] getTiles() { return tiles; }
     public GroundTile[][] getGroundLayer() { return groundLayer; }
@@ -446,6 +531,48 @@ public class GameMap {
     public int getHeight() { return MAP_HEIGHT; }
     public World getWorld() { return world; }
     public boolean hasTmxMap() { return tiledMap != null; }
+    public float getRemainingTime() { return remainingTime; }
+    public float getCurrentSpeed() { return LEVEL_SPEEDS[currentLevel - 1]; }
+
+    public void startNextLevel() {
+        if (currentLevel >= MAX_LEVEL) return;
+
+        currentLevel++;
+        levelComplete = false;
+
+        // Timer und Chaser zurücksetzen
+        remainingTime = LEVEL_TIME_LIMIT;
+        gameTime = 0;
+        positionRecordTimer = 0;
+        positionHistory.clear();
+
+        // Chaser Zombie entfernen
+        if (chaserZombie != null) {
+            world.destroyBody(chaserZombie.getHitbox());
+            chaserZombie = null;
+        }
+
+        // Alte Map entladen
+        if (tiledMap != null) {
+            tiledMap.dispose();
+            tiledMap = null;
+        }
+        if (tiledMapRenderer != null) {
+            tiledMapRenderer.dispose();
+            tiledMapRenderer = null;
+        }
+
+        // Spieler an neue Eingangsposition setzen
+        currentMapIndex = LEVEL_TO_MAP[currentLevel - 1];
+        float entranceX = MAP_ENTRANCES[currentMapIndex][0];
+        float entranceY = MAP_ENTRANCES[currentMapIndex][1];
+        player.getHitbox().setTransform(entranceX, entranceY, 0);
+
+        // Neue Map laden
+        loadCurrentLevelMap();
+
+        Gdx.app.log("GameMap", "Started Level " + currentLevel);
+    }
 
     public void dispose() {
         if (tiledMap != null) tiledMap.dispose();

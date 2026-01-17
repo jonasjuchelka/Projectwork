@@ -78,7 +78,14 @@ public class GameScreen implements Screen {
         }
 
         if (gameMap != null) {
-            if (playerVisible && !gameMap.isGameOver()) {
+            // Level-Übergang prüfen
+            if (gameMap.isLevelComplete()) {
+                gameMap.startNextLevel();
+                spawnDelay = 1.5f;
+                playerVisible = false;
+            }
+
+            if (playerVisible && !gameMap.isGameOver() && !gameMap.isLevelComplete()) {
                 gameMap.tick(delta);
             }
             updateCamera();
@@ -107,11 +114,42 @@ public class GameScreen implements Screen {
             batch.getProjectionMatrix().setToOrtho2D(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
             batch.setProjectionMatrix(batch.getProjectionMatrix());
             batch.begin();
-            font.draw(batch, "Valley Day - TMX Map", 10, Gdx.graphics.getHeight() - 10);
-            font.draw(batch, "WASD to move, SPACE to use tool, E to shoo wildlife, ESC to menu", 10, Gdx.graphics.getHeight() - 30);
-            if (gameMap != null && gameMap.getPlayer() != null) {
-                Player p = gameMap.getPlayer();
-                font.draw(batch, "Player: (" + (int)p.getX() + ", " + (int)p.getY() + ")", 10, Gdx.graphics.getHeight() - 50);
+
+            // Level-Anzeige oben links mit Schatten
+            if (gameMap != null) {
+                String levelText = "Level " + gameMap.getCurrentLevel() + "/" + gameMap.getMaxLevel();
+
+                // Schatten
+                font.setColor(0.2f, 0.2f, 0.2f, 0.6f);
+                font.draw(batch, levelText, 11, Gdx.graphics.getHeight() - 11);
+
+                // Level-Text in Gelb für bessere Sichtbarkeit
+                font.setColor(Color.YELLOW);
+                font.draw(batch, levelText, 10, Gdx.graphics.getHeight() - 10);
+            }
+
+            font.setColor(Color.WHITE);
+            font.draw(batch, "WASD to move, E to shoo wildlife, ESC to menu", 10, Gdx.graphics.getHeight() - 30);
+
+            // Timer-Anzeige oben rechts
+            if (gameMap != null) {
+                float remainingTime = gameMap.getRemainingTime();
+                int minutes = (int) (remainingTime / 60);
+                int seconds = (int) (remainingTime % 60);
+                String timerText = String.format("%d:%02d", minutes, seconds);
+
+                // Timer-Text messen für rechte Ausrichtung
+                glyphLayout.setText(font, timerText);
+                float timerX = Gdx.graphics.getWidth() - glyphLayout.width - 15;
+                float timerY = Gdx.graphics.getHeight() - 15;
+
+                // Leichter Hintergrund für bessere Lesbarkeit
+                font.setColor(0.2f, 0.2f, 0.2f, 0.6f);
+                font.draw(batch, timerText, timerX + 1, timerY - 1);
+
+                // Timer-Text in Weiß
+                font.setColor(Color.WHITE);
+                font.draw(batch, timerText, timerX, timerY);
             }
             batch.end();
         }
@@ -144,15 +182,23 @@ public class GameScreen implements Screen {
         batch.setProjectionMatrix(batch.getProjectionMatrix());
         batch.begin();
 
-        font.setColor(Color.WHITE);
-        String gameOverText = "Game Over";
+        // Unterschiedliche Nachrichten für Game Won vs Game Over
+        String mainText;
+        if (gameMap != null && gameMap.isGameWon()) {
+            font.setColor(Color.GREEN);
+            mainText = "You Won! All 5 Levels Complete!";
+        } else {
+            font.setColor(Color.WHITE);
+            mainText = "Game Over";
+        }
         String escText = "Press ESC to exit";
 
-        glyphLayout.setText(font, gameOverText);
-        float gameOverX = (screenWidth - glyphLayout.width) / 2;
-        float gameOverY = screenHeight / 2 + 20;
-        font.draw(batch, gameOverText, gameOverX, gameOverY);
+        glyphLayout.setText(font, mainText);
+        float mainX = (screenWidth - glyphLayout.width) / 2;
+        float mainY = screenHeight / 2 + 20;
+        font.draw(batch, mainText, mainX, mainY);
 
+        font.setColor(Color.WHITE);
         glyphLayout.setText(font, escText);
         float escX = (screenWidth - glyphLayout.width) / 2;
         float escY = screenHeight / 2 - 20;

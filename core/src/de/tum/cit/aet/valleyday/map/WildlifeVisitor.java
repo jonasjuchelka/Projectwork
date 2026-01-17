@@ -27,7 +27,6 @@ public class WildlifeVisitor implements Drawable {
     private float targetX = -1;
     private float targetY = -1;
     private float searchTimer = 0;
-    private static final float MOVE_SPEED = 2.0f;
     private static final float SEARCH_INTERVAL = 3.0f;
     private static final Random random = new Random();
 
@@ -82,9 +81,11 @@ public class WildlifeVisitor implements Drawable {
             moveTimer = 1.0f + random.nextFloat() * 2.0f;
         }
 
+        // Wildlife bewegt sich mit 40% der Spielergeschwindigkeit
+        float moveSpeed = gameMap.getCurrentSpeed() * 0.4f;
         float rad = (float) Math.toRadians(moveDirection);
-        float vx = (float) Math.cos(rad) * MOVE_SPEED;
-        float vy = (float) Math.sin(rad) * MOVE_SPEED;
+        float vx = (float) Math.cos(rad) * moveSpeed;
+        float vy = (float) Math.sin(rad) * moveSpeed;
 
         hitbox.setLinearVelocity(vx, vy);
 

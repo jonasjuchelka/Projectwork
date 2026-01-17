@@ -11,8 +11,7 @@ import de.tum.cit.aet.valleyday.texture.Textures;
 
 
 public class ChaserZombie implements Drawable {
-    private static final float MOVE_SPEED = 5.0f;
-    private static final float POSITION_RECORD_INTERVAL = 0.1f;
+    private float moveSpeed = 5.0f;  // Wird von GameMap gesetzt
 
     private final Body hitbox;
     private float targetX;
@@ -23,6 +22,10 @@ public class ChaserZombie implements Drawable {
         this.hitbox = createHitbox(world, startX, startY);
         this.targetX = startX;
         this.targetY = startY;
+    }
+
+    public void setMoveSpeed(float speed) {
+        this.moveSpeed = speed;
     }
 
     private Body createHitbox(World world, float startX, float startY) {
@@ -70,8 +73,8 @@ public class ChaserZombie implements Drawable {
         float distance = (float) Math.sqrt(dx * dx + dy * dy);
 
         if (distance > 0.1f) {
-            float vx = (dx / distance) * MOVE_SPEED;
-            float vy = (dy / distance) * MOVE_SPEED;
+            float vx = (dx / distance) * moveSpeed;
+            float vy = (dy / distance) * moveSpeed;
             hitbox.setLinearVelocity(vx, vy);
         } else {
             hitbox.setLinearVelocity(0, 0);
@@ -91,5 +94,9 @@ public class ChaserZombie implements Drawable {
     @Override
     public float getY() {
         return hitbox.getPosition().y;
+    }
+
+    public Body getHitbox() {
+        return hitbox;
     }
 }

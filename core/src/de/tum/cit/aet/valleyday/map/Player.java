@@ -19,7 +19,7 @@ import java.util.List;
 public class Player implements Drawable {
     private float elapsedTime;
     private final Body hitbox;
-    private static final float MOVEMENT_SPEED = 5.0f;
+    private float movementSpeed = 5.0f;  // Wird von GameMap gesetzt
     private Direction currentDirection = Direction.DOWN;
 
     // INVENTORY SYSTEM - ADDED BACK
@@ -36,6 +36,10 @@ public class Player implements Drawable {
         this.inventory = new ArrayList<>();
         this.currentTool = null;
         this.coins = 0;
+    }
+
+    public void setMovementSpeed(float speed) {
+        this.movementSpeed = speed;
     }
 
     private Body createHitbox(World world, float startX, float startY) {
@@ -66,18 +70,18 @@ public class Player implements Drawable {
         float yVelocity = 0;
 
         if (Gdx.input.isKeyPressed(Input.Keys.W)) {
-            yVelocity = MOVEMENT_SPEED;
+            yVelocity = movementSpeed;
             currentDirection = Direction.UP;
         } else if (Gdx.input.isKeyPressed(Input.Keys.S)) {
-            yVelocity = -MOVEMENT_SPEED;
+            yVelocity = -movementSpeed;
             currentDirection = Direction.DOWN;
         }
 
         if (Gdx.input.isKeyPressed(Input.Keys.A)) {
-            xVelocity = -MOVEMENT_SPEED;
+            xVelocity = -movementSpeed;
             currentDirection = Direction.LEFT;
         } else if (Gdx.input.isKeyPressed(Input.Keys.D)) {
-            xVelocity = MOVEMENT_SPEED;
+            xVelocity = movementSpeed;
             currentDirection = Direction.RIGHT;
         }
 
