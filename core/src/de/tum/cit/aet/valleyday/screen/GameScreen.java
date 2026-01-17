@@ -78,11 +78,13 @@ public class GameScreen implements Screen {
         }
 
         if (gameMap != null) {
-            // Level-Übergang prüfen
-            if (gameMap.isLevelComplete()) {
-                gameMap.startNextLevel();
-                spawnDelay = 1.5f;
-                playerVisible = false;
+            // Level-Übergang: Warte auf Enter-Taste
+            if (gameMap.isLevelComplete() && !gameMap.isGameOver()) {
+                if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
+                    gameMap.startNextLevel();
+                    spawnDelay = 1.5f;
+                    playerVisible = false;
+                }
             }
 
             if (playerVisible && !gameMap.isGameOver() && !gameMap.isLevelComplete()) {
@@ -109,8 +111,8 @@ public class GameScreen implements Screen {
             batch.end();
         }
 
-        // HUD - uses screen coordinates (only show if not game over)
-        if (gameMap == null || !gameMap.isGameOver()) {
+        // HUD - uses screen coordinates (only show if not game over and not level complete)
+        if (gameMap == null || (!gameMap.isGameOver() && !gameMap.isLevelComplete())) {
             batch.getProjectionMatrix().setToOrtho2D(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
             batch.setProjectionMatrix(batch.getProjectionMatrix());
             batch.begin();
@@ -154,14 +156,63 @@ public class GameScreen implements Screen {
             batch.end();
         }
 
-        // Game Over Overlay
-        if (gameMap != null && gameMap.isGameOver()) {
-            renderGameOverOverlay();
+        // Overlays
+        if (gameMap != null) {
+            if (gameMap.isLevelComplete() && !gameMap.isGameOver()) {
+                renderLevelCompleteOverlay();
+            } else if (gameMap.isGameOver()) {
+                renderGameOverOverlay();
+            }
         }
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
             game.returnToMenu();
         }
+    }
+
+    private void renderLevelCompleteOverlay() {
+        int screenWidth = Gdx.graphics.getWidth();
+        int screenHeight = Gdx.graphics.getHeight();
+
+        // Draw semi-transparent black overlay
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        shapeRenderer.setColor(0, 0, 0, 0.7f);
+        shapeRenderer.rect(0, 0, screenWidth, screenHeight);
+        shapeRenderer.end();
+        Gdx.gl.glDisable(GL20.GL_BLEND);
+
+        // Draw text
+        batch.getProjectionMatrix().setToOrtho2D(0, 0, screenWidth, screenHeight);
+        batch.setProjectionMatrix(batch.getProjectionMatrix());
+        batch.begin();
+
+        // Congratulations message
+        font.setColor(Color.GREEN);
+        String congratsText = "Congratulations!";
+        glyphLayout.setText(font, congratsText);
+        float congratsX = (screenWidth - glyphLayout.width) / 2;
+        float congratsY = screenHeight / 2 + 40;
+        font.draw(batch, congratsText, congratsX, congratsY);
+
+        // Level info
+        font.setColor(Color.WHITE);
+        String levelText = "Level " + gameMap.getCurrentLevel() + " Complete!";
+        glyphLayout.setText(font, levelText);
+        float levelX = (screenWidth - glyphLayout.width) / 2;
+        float levelY = screenHeight / 2 + 10;
+        font.draw(batch, levelText, levelX, levelY);
+
+        // Continue instruction
+        font.setColor(Color.YELLOW);
+        String continueText = "Press ENTER to start the next level";
+        glyphLayout.setText(font, continueText);
+        float continueX = (screenWidth - glyphLayout.width) / 2;
+        float continueY = screenHeight / 2 - 30;
+        font.draw(batch, continueText, continueX, continueY);
+
+        batch.end();
     }
 
     private void renderGameOverOverlay() {
@@ -182,26 +233,56 @@ public class GameScreen implements Screen {
         batch.setProjectionMatrix(batch.getProjectionMatrix());
         batch.begin();
 
-        // Unterschiedliche Nachrichten für Game Won vs Game Over
+        // Different messages based on game over reason
         String mainText;
-        if (gameMap != null && gameMap.isGameWon()) {
-            font.setColor(Color.GREEN);
-            mainText = "You Won! All 5 Levels Complete!";
-        } else {
-            font.setColor(Color.WHITE);
-            mainText = "Game Over";
-        }
-        String escText = "Press ESC to exit";
+        String reasonText = "";
+        GameMap.GameOverReason reason = gameMap.getGameOverReason();
 
+        if (reason == GameMap.GameOverReason.GAME_WON) {
+            // Game Won - All levels complete
+            font.setColor(Color.GREEN);
+            mainText = "Congratulations!";
+            reasonText = "You completed all " + gameMap.getMaxLevel() + " levels!";
+        } else {
+            // Game Over
+            font.setColor(Color.RED);
+            mainText = "Game Over";
+
+            switch (reason) {
+                case WILDLIFE_CONTACT:
+                    reasonText = "You were caught by wildlife!";
+                    break;
+                case CHASER_CAUGHT:
+                    reasonText = "The chaser zombie caught you!";
+                    break;
+                case TIME_EXPIRED:
+                    reasonText = "Time ran out!";
+                    break;
+                default:
+                    reasonText = "Better luck next time!";
+                    break;
+            }
+        }
+
+        // Main text
         glyphLayout.setText(font, mainText);
         float mainX = (screenWidth - glyphLayout.width) / 2;
-        float mainY = screenHeight / 2 + 20;
+        float mainY = screenHeight / 2 + 40;
         font.draw(batch, mainText, mainX, mainY);
 
+        // Reason text
         font.setColor(Color.WHITE);
+        glyphLayout.setText(font, reasonText);
+        float reasonX = (screenWidth - glyphLayout.width) / 2;
+        float reasonY = screenHeight / 2 + 10;
+        font.draw(batch, reasonText, reasonX, reasonY);
+
+        // Exit instruction
+        font.setColor(Color.GRAY);
+        String escText = "Press ESC to return to menu";
         glyphLayout.setText(font, escText);
         float escX = (screenWidth - glyphLayout.width) / 2;
-        float escY = screenHeight / 2 - 20;
+        float escY = screenHeight / 2 - 30;
         font.draw(batch, escText, escX, escY);
 
         batch.end();

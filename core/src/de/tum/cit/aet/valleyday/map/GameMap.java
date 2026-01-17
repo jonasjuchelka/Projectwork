@@ -25,6 +25,18 @@ public class GameMap {
         Box2D.init();
     }
 
+    // Game Over Reasons
+    public enum GameOverReason {
+        NONE,
+        WILDLIFE_CONTACT,
+        CHASER_CAUGHT,
+        TIME_EXPIRED,
+        LEVEL_COMPLETE,
+        GAME_WON
+    }
+
+    private GameOverReason gameOverReason = GameOverReason.NONE;
+
     private static final float TIME_STEP = 1f / 60f;
     private static final int VELOCITY_ITERATIONS = 6;
     private static final int POSITION_ITERATIONS = 2;
@@ -281,6 +293,7 @@ public class GameMap {
         if (remainingTime <= 0) {
             remainingTime = 0;
             gameOver = true;
+            gameOverReason = GameOverReason.TIME_EXPIRED;
             player.getHitbox().setLinearVelocity(0, 0);
             Gdx.app.log("GameMap", "Game Over: Zeit abgelaufen!");
             return;
@@ -470,11 +483,13 @@ public class GameMap {
                 // Alle Level geschafft - Spiel gewonnen!
                 gameWon = true;
                 gameOver = true;
+                gameOverReason = GameOverReason.GAME_WON;
                 Gdx.app.log("GameMap", "Game Won! All " + MAX_LEVEL + " levels completed!");
             } else {
-                // Nächstes Level starten
+                // Level geschafft - warte auf Enter
                 levelComplete = true;
-                Gdx.app.log("GameMap", "Level " + currentLevel + " complete! Moving to level " + (currentLevel + 1));
+                gameOverReason = GameOverReason.LEVEL_COMPLETE;
+                Gdx.app.log("GameMap", "Level " + currentLevel + " complete! Press Enter to continue.");
             }
             return;
         }
@@ -487,6 +502,7 @@ public class GameMap {
 
             if (distance < 0.6f) {
                 gameOver = true;
+                gameOverReason = GameOverReason.WILDLIFE_CONTACT;
                 player.getHitbox().setLinearVelocity(0, 0);
                 Gdx.app.log("GameMap", "Game Over: Caught by wildlife!");
                 return;
@@ -501,6 +517,7 @@ public class GameMap {
 
             if (distance < 0.6f) {
                 gameOver = true;
+                gameOverReason = GameOverReason.CHASER_CAUGHT;
                 player.getHitbox().setLinearVelocity(0, 0);
                 Gdx.app.log("GameMap", "Game Over: Caught by Chaser Zombie!");
             }
@@ -511,6 +528,7 @@ public class GameMap {
     public boolean isGameOver() { return gameOver; }
     public boolean isLevelComplete() { return levelComplete; }
     public boolean isGameWon() { return gameWon; }
+    public GameOverReason getGameOverReason() { return gameOverReason; }
     public int getCurrentLevel() { return currentLevel; }
     public int getMaxLevel() { return MAX_LEVEL; }
     public Player getPlayer() { return player; }
@@ -539,6 +557,7 @@ public class GameMap {
 
         currentLevel++;
         levelComplete = false;
+        gameOverReason = GameOverReason.NONE;
 
         // Timer und Chaser zurücksetzen
         remainingTime = LEVEL_TIME_LIMIT;
