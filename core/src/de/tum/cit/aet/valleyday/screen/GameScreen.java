@@ -29,9 +29,13 @@ public class GameScreen implements Screen {
     private ShapeRenderer shapeRenderer;
     private GlyphLayout glyphLayout;
 
-    // Spawn delayAber
+    // Spawn delay
     private float spawnDelay = 1.5f;
     private boolean playerVisible = false;
+
+    // Pause state
+    private boolean isPaused = false;
+    private boolean gameStarted = false;  // true after first unpause
 
     public GameScreen(ValleyDayGame game) {
         this.game = game;
@@ -49,6 +53,10 @@ public class GameScreen implements Screen {
 
         // GameMap handles everything internally
         this.gameMap = new GameMap(game);
+
+        // Start paused to show initial menu
+        this.isPaused = true;
+        this.gameStarted = false;
     }
 
     @Override
@@ -69,27 +77,63 @@ public class GameScreen implements Screen {
         Gdx.gl.glClearColor(0.2f, 0.2f, 0.2f, 1f);
         Gdx.gl.glClear(com.badlogic.gdx.graphics.GL20.GL_COLOR_BUFFER_BIT);
 
-        // Handle spawn delay
-        if (!playerVisible) {
-            spawnDelay -= delta;
-            if (spawnDelay <= 0) {
-                playerVisible = true;
+        // Handle pause toggle with SPACE
+        if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
+            if (!gameMap.isGameOver() && !gameMap.isLevelComplete()) {
+                isPaused = !isPaused;
             }
         }
 
-        if (gameMap != null) {
-            // Level-Übergang: Warte auf Enter-Taste
-            if (gameMap.isLevelComplete() && !gameMap.isGameOver()) {
-                if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
-                    gameMap.startNextLevel();
-                    spawnDelay = 1.5f;
-                    playerVisible = false;
+        // Handle ENTER to unpause/start
+        if (isPaused && Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
+            isPaused = false;
+            gameStarted = true;
+        }
+
+        // Handle ESC - either exit to menu or toggle pause
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+            if (isPaused) {
+                // In pause menu, ESC exits to main menu
+                game.returnToMenu();
+                return;
+            } else if (gameMap.isGameOver()) {
+                // In game over state, ESC exits to main menu
+                game.returnToMenu();
+                return;
+            } else {
+                // During gameplay, ESC opens pause menu
+                isPaused = true;
+            }
+        }
+
+        // Only update game logic if not paused
+        if (!isPaused) {
+            // Handle spawn delay
+            if (!playerVisible) {
+                spawnDelay -= delta;
+                if (spawnDelay <= 0) {
+                    playerVisible = true;
                 }
             }
 
-            if (playerVisible && !gameMap.isGameOver() && !gameMap.isLevelComplete()) {
-                gameMap.tick(delta);
+            if (gameMap != null) {
+                // Level-Übergang: Warte auf Enter-Taste
+                if (gameMap.isLevelComplete() && !gameMap.isGameOver()) {
+                    if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
+                        gameMap.startNextLevel();
+                        spawnDelay = 1.5f;
+                        playerVisible = false;
+                    }
+                }
+
+                if (playerVisible && !gameMap.isGameOver() && !gameMap.isLevelComplete()) {
+                    gameMap.tick(delta);
+                }
             }
+        }
+
+        // Always update camera and render (even when paused)
+        if (gameMap != null) {
             updateCamera();
 
             // ========== RENDER ORDER (LAYERED) ==========
@@ -111,63 +155,143 @@ public class GameScreen implements Screen {
             batch.end();
         }
 
-        // HUD - uses screen coordinates (only show if not game over and not level complete)
-        if (gameMap == null || (!gameMap.isGameOver() && !gameMap.isLevelComplete())) {
+        // HUD - uses screen coordinates (only show if not game over, not level complete, and not paused)
+        if (gameMap != null && !gameMap.isGameOver() && !gameMap.isLevelComplete() && !isPaused) {
             batch.getProjectionMatrix().setToOrtho2D(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
             batch.setProjectionMatrix(batch.getProjectionMatrix());
             batch.begin();
 
             // Level-Anzeige oben links mit Schatten
-            if (gameMap != null) {
-                String levelText = "Level " + gameMap.getCurrentLevel() + "/" + gameMap.getMaxLevel();
+            String levelText = "Level " + gameMap.getCurrentLevel() + "/" + gameMap.getMaxLevel();
 
-                // Schatten
-                font.setColor(0.2f, 0.2f, 0.2f, 0.6f);
-                font.draw(batch, levelText, 11, Gdx.graphics.getHeight() - 11);
+            // Schatten
+            font.setColor(0.2f, 0.2f, 0.2f, 0.6f);
+            font.draw(batch, levelText, 11, Gdx.graphics.getHeight() - 11);
 
-                // Level-Text in Gelb für bessere Sichtbarkeit
-                font.setColor(Color.YELLOW);
-                font.draw(batch, levelText, 10, Gdx.graphics.getHeight() - 10);
-            }
+            // Level-Text in Gelb für bessere Sichtbarkeit
+            font.setColor(Color.YELLOW);
+            font.draw(batch, levelText, 10, Gdx.graphics.getHeight() - 10);
 
             font.setColor(Color.WHITE);
-            font.draw(batch, "WASD to move, E to shoo wildlife, ESC to menu", 10, Gdx.graphics.getHeight() - 30);
+            font.draw(batch, "WASD to move, SPACE to pause", 10, Gdx.graphics.getHeight() - 30);
 
             // Timer-Anzeige oben rechts
-            if (gameMap != null) {
-                float remainingTime = gameMap.getRemainingTime();
-                int minutes = (int) (remainingTime / 60);
-                int seconds = (int) (remainingTime % 60);
-                String timerText = String.format("%d:%02d", minutes, seconds);
+            float remainingTime = gameMap.getRemainingTime();
+            int minutes = (int) (remainingTime / 60);
+            int seconds = (int) (remainingTime % 60);
+            String timerText = String.format("%d:%02d", minutes, seconds);
 
-                // Timer-Text messen für rechte Ausrichtung
-                glyphLayout.setText(font, timerText);
-                float timerX = Gdx.graphics.getWidth() - glyphLayout.width - 15;
-                float timerY = Gdx.graphics.getHeight() - 15;
+            // Timer-Text messen für rechte Ausrichtung
+            glyphLayout.setText(font, timerText);
+            float timerX = Gdx.graphics.getWidth() - glyphLayout.width - 15;
+            float timerY = Gdx.graphics.getHeight() - 15;
 
-                // Leichter Hintergrund für bessere Lesbarkeit
-                font.setColor(0.2f, 0.2f, 0.2f, 0.6f);
-                font.draw(batch, timerText, timerX + 1, timerY - 1);
+            // Leichter Hintergrund für bessere Lesbarkeit
+            font.setColor(0.2f, 0.2f, 0.2f, 0.6f);
+            font.draw(batch, timerText, timerX + 1, timerY - 1);
 
-                // Timer-Text in Weiß
-                font.setColor(Color.WHITE);
-                font.draw(batch, timerText, timerX, timerY);
-            }
+            // Timer-Text in Weiß
+            font.setColor(Color.WHITE);
+            font.draw(batch, timerText, timerX, timerY);
+
             batch.end();
         }
 
-        // Overlays
-        if (gameMap != null) {
+        // Overlays (in priority order)
+        if (isPaused) {
+            renderPauseOverlay();
+        } else if (gameMap != null) {
             if (gameMap.isLevelComplete() && !gameMap.isGameOver()) {
                 renderLevelCompleteOverlay();
             } else if (gameMap.isGameOver()) {
                 renderGameOverOverlay();
             }
         }
+    }
 
-        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
-            game.returnToMenu();
+    private void renderPauseOverlay() {
+        int screenWidth = Gdx.graphics.getWidth();
+        int screenHeight = Gdx.graphics.getHeight();
+
+        // Draw semi-transparent dark blue overlay
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        shapeRenderer.setColor(0.1f, 0.1f, 0.2f, 0.85f);
+        shapeRenderer.rect(0, 0, screenWidth, screenHeight);
+
+        // Draw decorative box in center
+        float boxWidth = 400;
+        float boxHeight = 250;
+        float boxX = (screenWidth - boxWidth) / 2;
+        float boxY = (screenHeight - boxHeight) / 2;
+
+        // Box background (darker)
+        shapeRenderer.setColor(0.15f, 0.15f, 0.25f, 0.95f);
+        shapeRenderer.rect(boxX, boxY, boxWidth, boxHeight);
+
+        // Box border (golden)
+        shapeRenderer.end();
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
+        shapeRenderer.setColor(0.85f, 0.65f, 0.13f, 1f);  // Golden color
+        shapeRenderer.rect(boxX, boxY, boxWidth, boxHeight);
+        shapeRenderer.rect(boxX + 3, boxY + 3, boxWidth - 6, boxHeight - 6);  // Double border
+        shapeRenderer.end();
+        Gdx.gl.glDisable(GL20.GL_BLEND);
+
+        // Draw text
+        batch.getProjectionMatrix().setToOrtho2D(0, 0, screenWidth, screenHeight);
+        batch.setProjectionMatrix(batch.getProjectionMatrix());
+        batch.begin();
+
+        // Title "VALLEY DAY" - large and golden
+        font.getData().setScale(2.5f);
+        font.setColor(0.85f, 0.65f, 0.13f, 1f);  // Golden
+        String titleText = "VALLEY DAY";
+        glyphLayout.setText(font, titleText);
+        float titleX = (screenWidth - glyphLayout.width) / 2;
+        float titleY = boxY + boxHeight - 30;
+        font.draw(batch, titleText, titleX, titleY);
+
+        // Subtitle based on game state
+        font.getData().setScale(1.2f);
+        font.setColor(Color.WHITE);
+        String subtitleText = gameStarted ? "- PAUSED -" : "- NEW GAME -";
+        glyphLayout.setText(font, subtitleText);
+        float subtitleX = (screenWidth - glyphLayout.width) / 2;
+        float subtitleY = titleY - 40;
+        font.draw(batch, subtitleText, subtitleX, subtitleY);
+
+        // Instructions
+        font.getData().setScale(1f);
+        float instructionY = boxY + boxHeight / 2 - 10;
+
+        // Continue/Start instruction (green)
+        font.setColor(0.3f, 0.9f, 0.3f, 1f);  // Bright green
+        String continueText = gameStarted ? "Press ENTER to continue the game" : "Press ENTER to start the game";
+        glyphLayout.setText(font, continueText);
+        float continueX = (screenWidth - glyphLayout.width) / 2;
+        font.draw(batch, continueText, continueX, instructionY);
+
+        // Exit instruction (red) - only show if game has started
+        if (gameStarted) {
+            font.setColor(0.9f, 0.3f, 0.3f, 1f);  // Red
+            String exitText = "Press ESC to leave the game";
+            glyphLayout.setText(font, exitText);
+            float exitX = (screenWidth - glyphLayout.width) / 2;
+            font.draw(batch, exitText, exitX, instructionY - 30);
         }
+
+        // Controls hint at bottom
+        font.setColor(0.6f, 0.6f, 0.6f, 1f);  // Gray
+        String controlsText = "WASD = Move | SPACE = Pause";
+        glyphLayout.setText(font, controlsText);
+        float controlsX = (screenWidth - glyphLayout.width) / 2;
+        font.draw(batch, controlsText, controlsX, boxY + 25);
+
+        // Reset font scale
+        font.getData().setScale(1f);
+        batch.end();
     }
 
     private void renderLevelCompleteOverlay() {
